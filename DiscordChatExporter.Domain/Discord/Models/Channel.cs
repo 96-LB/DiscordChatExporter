@@ -43,9 +43,11 @@ namespace DiscordChatExporter.Domain.Discord.Models
 
         public int Position { get; }
 
+        public int CategoryPosition { get; }
+
         public string? Topic { get; }
 
-        public Channel(Snowflake id, ChannelType type, Snowflake guildId, ChannelCategory? category, string name, int position, string? topic)
+        public Channel(Snowflake id, ChannelType type, Snowflake guildId, ChannelCategory? category, string name, int position, int categoryPosition, string? topic)
         {
             Id = id;
             Type = type;
@@ -53,6 +55,7 @@ namespace DiscordChatExporter.Domain.Discord.Models
             Category = category ?? GetDefaultCategory(type);
             Name = name;
             Position = position;
+            CategoryPosition = categoryPosition;
             Topic = topic;
         }
 
@@ -76,7 +79,7 @@ namespace DiscordChatExporter.Domain.Discord.Models
                 0
             );
 
-        public static Channel Parse(JsonElement json, ChannelCategory? category = null, int? position = null)
+        public static Channel Parse(JsonElement json, ChannelCategory? category = null, int? position = null, int? categoryPosition = null)
         {
             var id = json.GetProperty("id").GetString().Pipe(Snowflake.Parse);
             var guildId = json.GetPropertyOrNull("guild_id")?.GetString().Pipe(Snowflake.Parse);
@@ -90,7 +93,8 @@ namespace DiscordChatExporter.Domain.Discord.Models
                 id.ToString();
 
             position ??= json.GetProperty("position").GetInt32();
-            
+            categoryPosition ??= 0;
+
             return new Channel(
                 id,
                 type,
@@ -98,6 +102,7 @@ namespace DiscordChatExporter.Domain.Discord.Models
                 category ?? GetDefaultCategory(type),
                 name,
                 position.Value,
+                categoryPosition.Value,
                 topic
             );
         }

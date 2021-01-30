@@ -127,22 +127,30 @@ namespace DiscordChatExporter.Domain.Discord
                     .Select((j, index) => ChannelCategory.Parse(j, index + 1))
                     .ToDictionary(j => j.Id.ToString());
 
+                var counts = new Dictionary<string, int>();
+
                 var position = 0;
 
                 foreach (var channelJson in orderedResponse)
                 {
                     var parentId = channelJson.GetPropertyOrNull("parent_id")?.GetString();
+                    
                     var category = !string.IsNullOrWhiteSpace(parentId)
                         ? categories.GetValueOrDefault(parentId)
                         : null;
                     
-                    var channel = Channel.Parse(channelJson, category, position);
+                    var count = !string.IsNullOrWhiteSpace(parentId)
+                        ? counts.GetValueOrDefault(parentId)
+                        : 0;
+
+                    var channel = Channel.Parse(channelJson, category, position, count);
 
                     // Skip non-text channels
                     if (!channel.IsTextChannel)
                         continue;
 
                     position++;
+                    counts[parentId ?? ""] = count + 1;
 
                     yield return channel;
                 }

@@ -96,6 +96,7 @@ namespace DiscordChatExporter.Domain.Exporting
                     "%C" => channel.Name,
                     "%p" => channel.Position.ToString(),
                     "%P" => channel.Category.Position.ToString(),
+                    "%q" => channel.CategoryPosition.ToString(),
                     "%a" => (after ?? Snowflake.Zero).ToDate().ToString("yyyy-MM-dd"),
                     "%b" => (before?.ToDate() ?? DateTime.Now).ToString("yyyy-MM-dd"),
                     "%%" => "%",
