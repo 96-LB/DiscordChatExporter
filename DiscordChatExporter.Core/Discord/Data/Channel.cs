@@ -40,7 +40,7 @@ namespace DiscordChatExporter.Core.Discord.Data
             ChannelCategory category,
             string name,
             int? position,
-            int categoryPosition
+            int categoryPosition,
             string? topic)
         {
             Id = id;
