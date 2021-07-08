@@ -5,14 +5,14 @@ using System.Net;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
-using DiscordChatExporter.Domain.Discord.Models;
-using DiscordChatExporter.Domain.Exceptions;
-using DiscordChatExporter.Domain.Internal;
-using DiscordChatExporter.Domain.Utilities;
+using DiscordChatExporter.Core.Discord.Data;
+using DiscordChatExporter.Core.Exceptions;
+using DiscordChatExporter.Core.Utils;
+using DiscordChatExporter.Core.Utils.Extensions;
 using JsonExtensions.Http;
 using JsonExtensions.Reading;
 
-namespace DiscordChatExporter.Domain.Discord
+namespace DiscordChatExporter.Core.Discord
 {
     public class DiscordClient
     {
@@ -36,7 +36,7 @@ namespace DiscordChatExporter.Domain.Discord
             await Http.ResponsePolicy.ExecuteAsync(async () =>
             {
                 using var request = new HttpRequestMessage(HttpMethod.Get, new Uri(_baseUri, url));
-                request.Headers.Authorization = _token.GetAuthorizationHeader();
+                request.Headers.Authorization = _token.GetAuthenticationHeader();
 
                 return await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
             });
