@@ -64,18 +64,16 @@ namespace DiscordChatExporter.Gui.ViewModels
             DisplayName = $"{App.Name} v{App.VersionString}";
 
             // Update busy state when progress manager changes
-            ProgressManager.Bind(o => o.IsActive,
-                (sender, args) => IsBusy = ProgressManager.IsActive
+            ProgressManager.Bind(o => o.IsActive, (_, _) =>
+                IsBusy = ProgressManager.IsActive
             );
 
-            ProgressManager.Bind(o => o.IsActive,
-                (sender, args) => IsProgressIndeterminate =
-                    ProgressManager.IsActive && ProgressManager.Progress.IsEither(0, 1)
+            ProgressManager.Bind(o => o.IsActive, (_, _) =>
+                IsProgressIndeterminate = ProgressManager.IsActive && ProgressManager.Progress.IsEither(0, 1)
             );
 
-            ProgressManager.Bind(o => o.Progress,
-                (sender, args) => IsProgressIndeterminate =
-                    ProgressManager.IsActive && ProgressManager.Progress.IsEither(0, 1)
+            ProgressManager.Bind(o => o.Progress, (_, _) =>
+                IsProgressIndeterminate = ProgressManager.IsActive && ProgressManager.Progress.IsEither(0, 1)
             );
         }
 

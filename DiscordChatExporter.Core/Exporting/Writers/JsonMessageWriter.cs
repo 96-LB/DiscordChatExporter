@@ -13,8 +13,6 @@ namespace DiscordChatExporter.Core.Exporting.Writers
     {
         private readonly Utf8JsonWriter _writer;
 
-        private long _messageCount;
-
         public JsonMessageWriter(Stream stream, ExportContext context)
             : base(stream, context)
         {
@@ -22,6 +20,8 @@ namespace DiscordChatExporter.Core.Exporting.Writers
             {
                 Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
                 Indented = true,
+                // Validation errors may mask actual failures
+                // https://github.com/Tyrrrz/DiscordChatExporter/issues/413
                 SkipValidation = true
             });
         }
@@ -50,7 +50,7 @@ namespace DiscordChatExporter.Core.Exporting.Writers
             _writer.WriteString("url", embedAuthor.Url);
 
             if (!string.IsNullOrWhiteSpace(embedAuthor.IconUrl))
-                _writer.WriteString("iconUrl", await Context.ResolveMediaUrlAsync(embedAuthor.IconUrl));
+                _writer.WriteString("iconUrl", await Context.ResolveMediaUrlAsync(embedAuthor.IconProxyUrl ?? embedAuthor.IconUrl));
 
             _writer.WriteEndObject();
             await _writer.FlushAsync();
@@ -61,7 +61,7 @@ namespace DiscordChatExporter.Core.Exporting.Writers
             _writer.WriteStartObject("thumbnail");
 
             if (!string.IsNullOrWhiteSpace(embedThumbnail.Url))
-                _writer.WriteString("url", await Context.ResolveMediaUrlAsync(embedThumbnail.Url));
+                _writer.WriteString("url", await Context.ResolveMediaUrlAsync(embedThumbnail.ProxyUrl ?? embedThumbnail.Url));
 
             _writer.WriteNumber("width", embedThumbnail.Width);
             _writer.WriteNumber("height", embedThumbnail.Height);
@@ -75,7 +75,7 @@ namespace DiscordChatExporter.Core.Exporting.Writers
             _writer.WriteStartObject("image");
 
             if (!string.IsNullOrWhiteSpace(embedImage.Url))
-                _writer.WriteString("url", await Context.ResolveMediaUrlAsync(embedImage.Url));
+                _writer.WriteString("url", await Context.ResolveMediaUrlAsync(embedImage.ProxyUrl ?? embedImage.Url));
 
             _writer.WriteNumber("width", embedImage.Width);
             _writer.WriteNumber("height", embedImage.Height);
@@ -91,7 +91,7 @@ namespace DiscordChatExporter.Core.Exporting.Writers
             _writer.WriteString("text", embedFooter.Text);
 
             if (!string.IsNullOrWhiteSpace(embedFooter.IconUrl))
-                _writer.WriteString("iconUrl", await Context.ResolveMediaUrlAsync(embedFooter.IconUrl));
+                _writer.WriteString("iconUrl", await Context.ResolveMediaUrlAsync(embedFooter.IconProxyUrl ?? embedFooter.IconUrl));
 
             _writer.WriteEndObject();
             await _writer.FlushAsync();
@@ -193,6 +193,7 @@ namespace DiscordChatExporter.Core.Exporting.Writers
             _writer.WriteStartObject("channel");
             _writer.WriteString("id", Context.Request.Channel.Id.ToString());
             _writer.WriteString("type", Context.Request.Channel.Type.ToString());
+            _writer.WriteString("categoryId", Context.Request.Channel.Category.Id.ToString());
             _writer.WriteString("category", Context.Request.Channel.Category.Name);
             _writer.WriteString("name", Context.Request.Channel.Name);
             _writer.WriteString("topic", Context.Request.Channel.Topic);
@@ -211,6 +212,8 @@ namespace DiscordChatExporter.Core.Exporting.Writers
 
         public override async ValueTask WriteMessageAsync(Message message)
         {
+            await base.WriteMessageAsync(message);
+
             _writer.WriteStartObject();
 
             // Metadata
@@ -230,6 +233,7 @@ namespace DiscordChatExporter.Core.Exporting.Writers
             _writer.WriteString("name", message.Author.Name);
             _writer.WriteString("discriminator", message.Author.DiscriminatorFormatted);
             _writer.WriteString("nickname", Context.TryGetMember(message.Author.Id)?.Nick ?? message.Author.Name);
+            _writer.WriteString("color", Context.TryGetUserColor(message.Author.Id)?.ToHex());
             _writer.WriteBoolean("isBot", message.Author.IsBot);
             _writer.WriteString("avatarUrl", await Context.ResolveMediaUrlAsync(message.Author.AvatarUrl));
             _writer.WriteEndObject();
@@ -278,8 +282,6 @@ namespace DiscordChatExporter.Core.Exporting.Writers
 
             _writer.WriteEndObject();
             await _writer.FlushAsync();
-
-            _messageCount++;
         }
 
         public override async ValueTask WritePostambleAsync()
@@ -287,7 +289,7 @@ namespace DiscordChatExporter.Core.Exporting.Writers
             // Message array (end)
             _writer.WriteEndArray();
 
-            _writer.WriteNumber("messageCount", _messageCount);
+            _writer.WriteNumber("messageCount", MessagesWritten);
 
             // Root object (end)
             _writer.WriteEndObject();

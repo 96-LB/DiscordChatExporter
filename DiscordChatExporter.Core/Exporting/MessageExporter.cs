@@ -10,7 +10,6 @@ namespace DiscordChatExporter.Core.Exporting
     {
         private readonly ExportContext _context;
 
-        private long _messageCount;
         private int _partitionIndex;
         private MessageWriter? _writer;
 
@@ -18,12 +17,6 @@ namespace DiscordChatExporter.Core.Exporting
         {
             _context = context;
         }
-
-        private bool IsPartitionLimitReached() =>
-            _messageCount > 0 &&
-            _context.Request.PartitionLimit is not null &&
-            _context.Request.PartitionLimit != 0 &&
-            _messageCount % _context.Request.PartitionLimit == 0;
 
         private async ValueTask ResetWriterAsync()
         {
@@ -38,7 +31,8 @@ namespace DiscordChatExporter.Core.Exporting
         private async ValueTask<MessageWriter> GetWriterAsync()
         {
             // Ensure partition limit has not been exceeded
-            if (IsPartitionLimitReached())
+            if (_writer is not null &&
+                _context.Request.PartitionLimit.IsReached(_writer.MessagesWritten, _writer.BytesWritten))
             {
                 await ResetWriterAsync();
                 _partitionIndex++;
@@ -64,7 +58,6 @@ namespace DiscordChatExporter.Core.Exporting
         {
             var writer = await GetWriterAsync();
             await writer.WriteMessageAsync(message);
-            _messageCount++;
         }
 
         public async ValueTask DisposeAsync() => await ResetWriterAsync();
@@ -72,9 +65,7 @@ namespace DiscordChatExporter.Core.Exporting
 
     internal partial class MessageExporter
     {
-        private static string GetPartitionFilePath(
-            string baseFilePath,
-            int partitionIndex)
+        private static string GetPartitionFilePath(string baseFilePath, int partitionIndex)
         {
             // First partition - don't change file name
             if (partitionIndex <= 0)

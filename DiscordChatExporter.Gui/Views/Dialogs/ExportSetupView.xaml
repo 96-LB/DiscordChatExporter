@@ -128,10 +128,10 @@
             <!--  Partitioning  -->
             <TextBox
                 Margin="16,8"
-                materialDesign:HintAssist.Hint="Messages per partition"
+                materialDesign:HintAssist.Hint="Partition limit"
                 materialDesign:HintAssist.IsFloating="True"
-                Text="{Binding PartitionLimit, TargetNullValue=''}"
-                ToolTip="Split output into partitions limited to this number of messages" />
+                Text="{Binding PartitionLimitValue}"
+                ToolTip="Split output into partitions, each limited to this number of messages (e.g. 100) or file size (e.g. 10mb)" />
 
             <!--  Download media  -->
             <Grid Margin="16,16" ToolTip="Download referenced media content (user avatars, attached files, embedded images, etc)">

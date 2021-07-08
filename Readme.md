@@ -23,62 +23,50 @@ The following table lists all available download options:
       <th></th>
       <th>Downloads</th>
       <th>Supported OS</th>
-      <th>Requirements</th>
     </tr>
   </thead>
   <tbody>
     <tr>
       <td><b>GUI</b></td>
       <td>
-        <div>🟢 <b><a href="https://github.com/Tyrrrz/DiscordChatExporter/releases/latest">Stable release</a></b> (<code>DiscordChatExporter.zip</code>)</div>
-        <div>🟠 <a href="https://github.com/Tyrrrz/DiscordChatExporter/actions?query=workflow%3ACI">CI build</a> (<code>DiscordChatExporter.zip</code>)</div>
-      </td>
-      <td>
         <ul>
-          <li>Windows <b>7</b>+</li>
+          <li>🟢 <b><a href="https://github.com/Tyrrrz/DiscordChatExporter/releases/latest">Stable release</a></b> (<code>DiscordChatExporter.zip</code>)</li>
+          <li>🟠 <a href="https://github.com/Tyrrrz/DiscordChatExporter/actions?query=workflow%3ACI">CI build</a> (<code>DiscordChatExporter.zip</code>)</li>
         </ul>
       </td>
       <td>
-        <div>.NET v3.1 Desktop Runtime</div>
         <ul>
-          <li><a href="https://dotnet.microsoft.com/download/dotnet-core/thank-you/runtime-desktop-3.1.0-windows-x64-installer">Windows <b>x64</b></a></li>
-          <li><a href="https://dotnet.microsoft.com/download/dotnet-core/thank-you/runtime-desktop-3.1.0-windows-x86-installer">Windows <b>x86</b></a></li>
+          <li>Windows <b>7</b> or higher</li>
         </ul>
       </td>
     </tr>
     <tr>
       <td><b>CLI</b></td>
       <td>
-        <div>🟢 <b><a href="https://github.com/Tyrrrz/DiscordChatExporter/releases/latest">Stable release</a></b> (<code>DiscordChatExporter.CLI.zip</code>)</div>
-        <div>🟠 <a href="https://github.com/Tyrrrz/DiscordChatExporter/actions?query=workflow%3ACI">CI build</a> (<code>DiscordChatExporter.CLI.zip</code>)</div>
-        <div>🐋 <a href="https://hub.docker.com/r/tyrrrz/discordchatexporter">Docker</a> (<code>tyrrrz/discordchatexporter</code>) 🚀</div>
-        <div>📦 <a href="https://aur.archlinux.org/packages/discord-chat-exporter-cli">AUR</a> (<code>discord-chat-exporter-cli</code>) 🚀 🦄</div>
-      </td>
-      <td>
         <ul>
-          <li>Windows <b>7</b>+</li>
-          <li>macOS <b>10.11</b>+</li>
-          <li>Linux</li>
+          <li>🟢 <b><a href="https://github.com/Tyrrrz/DiscordChatExporter/releases/latest">Stable release</a></b> (<code>DiscordChatExporter.CLI.zip</code>) ⚙️</li>
+          <li>🟠 <a href="https://github.com/Tyrrrz/DiscordChatExporter/actions?query=workflow%3ACI">CI build</a> (<code>DiscordChatExporter.CLI.zip</code>) ⚙️</li>
+          <li>🐋 <a href="https://hub.docker.com/r/tyrrrz/discordchatexporter">Docker</a> (<code>tyrrrz/discordchatexporter</code>)</li>
+          <li>📦 <a href="https://aur.archlinux.org/packages/discord-chat-exporter-cli">AUR</a> (<code>discord-chat-exporter-cli</code>) 🦄</li>
         </ul>
       </td>
       <td>
-        <div>.NET v3.1 Base Runtime</div>
         <ul>
-          <li><a href="https://dotnet.microsoft.com/download/dotnet-core/thank-you/runtime-desktop-3.1.0-windows-x64-installer">Windows <b>x64</b></a></li>
-          <li><a href="https://dotnet.microsoft.com/download/dotnet-core/thank-you/runtime-desktop-3.1.0-windows-x86-installer">Windows <b>x86</b></a></li>
-          <li><a href="https://dotnet.microsoft.com/download/dotnet-core/thank-you/runtime-3.1.0-macos-x64-installer">macOS <b>x64</b></a></li>
-          <li><a href="https://docs.microsoft.com/en-us/dotnet/core/install/linux">Linux (find your distribution)</a></li>
+          <li>Windows <b>7</b> or higher</li>
+          <li>macOS <b>10.13 (High Sierra)</b> or higher</li>
+          <li>Linux (multiple distros)</li>
         </ul>
       </td>
     </tr>
   </tbody>
 </table>
 
-- 🚀 - .NET Runtime is already embedded or installed automatically
+- ⚙️ - Requires .NET runtime to be installed manually:
+  - [.NET Core v3.1 Runtime for **Windows x64**](https://dotnet.microsoft.com/download/dotnet-core/thank-you/runtime-desktop-3.1.0-windows-x64-installer)
+  - [.NET Core v3.1 Runtime for **Windows x86**](https://dotnet.microsoft.com/download/dotnet-core/thank-you/runtime-desktop-3.1.0-windows-x86-installer)
+  - [.NET Core v3.1 Runtime for **macOS x64**](https://dotnet.microsoft.com/download/dotnet-core/thank-you/runtime-3.1.0-macos-x64-installer)
+  - [.NET Core v3.1 Runtime for **Linux**](https://docs.microsoft.com/en-us/dotnet/core/install/linux) (find your distro)
 - 🦄 - Community-maintained resource
-
-> Note that DiscordChatExporter requires **.NET v3.1 Runtime** in order to work!
-Refer to the **Requirements** column in the above table to download the appropriate installer for your system.
 
 ## Features
 
@@ -95,3 +83,32 @@ Refer to the **Requirements** column in the above table to download the appropri
 
 ![channel list](.screenshots/list.png)
 ![rendered output](.screenshots/output.png)
+
+## Building the project locally
+
+Prerequisites:
+
+- [.NET 5.0 SDK](https://dotnet.microsoft.com/download/dotnet/5.0)
+- [.NET 3.1 SDK](https://dotnet.microsoft.com/download/dotnet/3.1) (temporarily as the app still targets .NET 3.1, but requires .NET 5.0 to build)
+- _(Recommended)_ C#/.NET IDE, such as [JetBrains Rider](https://www.jetbrains.com/rider), [VS Code](https://code.visualstudio.com/docs/languages/csharp), or [Visual Studio](https://visualstudio.microsoft.com).
+
+To build the entire solution run the following command in the root of the repository:
+
+```sh
+> dotnet build
+```
+
+This will generate runtime artifacts for each project:
+
+```plaintext
+./DiscordChatExporter.Gui/bin/[Debug|Release]/[runtime]/*
+./DiscordChatExporter.Cli/bin/[Debug|Release]/[runtime]/*
+```
+
+You can also build and run a specific project directly.
+To do that, navigate to its directory and use `dotnet run`:
+
+```sh
+> cd DiscordChatExporter.Gui
+> dotnet run
+```

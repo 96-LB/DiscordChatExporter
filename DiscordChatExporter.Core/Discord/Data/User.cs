@@ -49,19 +49,19 @@ namespace DiscordChatExporter.Core.Discord.Data
         {
             // Animated
             if (avatarHash.StartsWith("a_", StringComparison.Ordinal))
-                return $"https://cdn.discordapp.com/avatars/{id}/{avatarHash}.gif";
+                return $"https://cdn.discordapp.com/avatars/{id}/{avatarHash}.gif?size=40";
 
             // Non-animated
-            return $"https://cdn.discordapp.com/avatars/{id}/{avatarHash}.png";
+            return $"https://cdn.discordapp.com/avatars/{id}/{avatarHash}.png?size=40";
         }
 
         public static User Parse(JsonElement json)
         {
             var id = json.GetProperty("id").GetString().Pipe(Snowflake.Parse);
+            var isBot = json.GetPropertyOrNull("bot")?.GetBoolean() ?? false;
             var discriminator = json.GetProperty("discriminator").GetString().Pipe(int.Parse);
             var name = json.GetProperty("username").GetString();
             var avatarHash = json.GetProperty("avatar").GetString();
-            var isBot = json.GetPropertyOrNull("bot")?.GetBoolean() ?? false;
 
             var avatarUrl = !string.IsNullOrWhiteSpace(avatarHash)
                 ? GetAvatarUrl(id, avatarHash)

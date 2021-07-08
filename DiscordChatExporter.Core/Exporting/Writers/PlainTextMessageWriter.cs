@@ -12,8 +12,6 @@ namespace DiscordChatExporter.Core.Exporting.Writers
     {
         private readonly TextWriter _writer;
 
-        private long _messageCount;
-
         public PlainTextMessageWriter(Stream stream, ExportContext context)
             : base(stream, context)
         {
@@ -77,10 +75,10 @@ namespace DiscordChatExporter.Core.Exporting.Writers
                 }
 
                 if (!string.IsNullOrWhiteSpace(embed.Thumbnail?.Url))
-                    await _writer.WriteLineAsync(await Context.ResolveMediaUrlAsync(embed.Thumbnail.Url));
+                    await _writer.WriteLineAsync(await Context.ResolveMediaUrlAsync(embed.Thumbnail.ProxyUrl ?? embed.Thumbnail.Url));
 
                 if (!string.IsNullOrWhiteSpace(embed.Image?.Url))
-                    await _writer.WriteLineAsync(await Context.ResolveMediaUrlAsync(embed.Image.Url));
+                    await _writer.WriteLineAsync(await Context.ResolveMediaUrlAsync(embed.Image.ProxyUrl ?? embed.Image.Url));
 
                 if (!string.IsNullOrWhiteSpace(embed.Footer?.Text))
                     await _writer.WriteLineAsync(embed.Footer.Text);
@@ -130,26 +128,29 @@ namespace DiscordChatExporter.Core.Exporting.Writers
 
         public override async ValueTask WriteMessageAsync(Message message)
         {
+            await base.WriteMessageAsync(message);
+
+            // Header
             await WriteMessageHeaderAsync(message);
 
+            // Content
             if (!string.IsNullOrWhiteSpace(message.Content))
                 await _writer.WriteLineAsync(FormatMarkdown(message.Content));
 
             await _writer.WriteLineAsync();
 
+            // Attachments, embeds, reactions
             await WriteAttachmentsAsync(message.Attachments);
             await WriteEmbedsAsync(message.Embeds);
             await WriteReactionsAsync(message.Reactions);
 
             await _writer.WriteLineAsync();
-
-            _messageCount++;
         }
 
         public override async ValueTask WritePostambleAsync()
         {
             await _writer.WriteLineAsync('='.Repeat(62));
-            await _writer.WriteLineAsync($"Exported {_messageCount:N0} message(s)");
+            await _writer.WriteLineAsync($"Exported {MessagesWritten:N0} message(s)");
             await _writer.WriteLineAsync('='.Repeat(62));
         }
 

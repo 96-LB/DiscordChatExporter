@@ -39,7 +39,7 @@ namespace DiscordChatExporter.Core.Exporting.Writers.MarkdownVisitors
                 TextFormatting.Underline => ("<u>", "</u>"),
                 TextFormatting.Strikethrough => ("<s>", "</s>"),
                 TextFormatting.Spoiler => (
-                    "<span class=\"spoiler spoiler--hidden\" onclick=\"showSpoiler(event, this)\"><span class=\"spoiler-text\">", "</span></span>"),
+                    "<span class=\"spoiler-text spoiler-text--hidden\" onclick=\"showSpoiler(event, this)\">", "</span>"),
                 TextFormatting.Quote => ("<div class=\"quote\">", "</div>"),
                 _ => throw new ArgumentOutOfRangeException(nameof(formatted.Formatting))
             };
@@ -131,7 +131,7 @@ namespace DiscordChatExporter.Core.Exporting.Writers.MarkdownVisitors
             var jumboClass = _isJumbo ? "emoji--large" : "";
 
             _buffer
-                .Append($"<img class=\"emoji {jumboClass}\" alt=\"{emoji.Name}\" title=\"{emoji.Name}\" src=\"{emojiImageUrl}\">");
+                .Append($"<img loading=\"lazy\" class=\"emoji {jumboClass}\" alt=\"{emoji.Name}\" title=\"{emoji.Code}\" src=\"{emojiImageUrl}\">");
 
             return base.VisitEmoji(emoji);
         }

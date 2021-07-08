@@ -1,3 +1,37 @@
+### v2.28 (19-Jun-2021)
+
+- [HTML] Added special casing for YouTube video embeds to render them directly using an embedded player. (Thanks [@quentinmay](https://github.com/quentinmay))
+- [HTML] Added support for rendering standard emoji by code. Such emoji may sometimes be found in messages sent by bots or through webhooks. (Thanks [@CanePlayz](https://github.com/CanePlayz) and [@Lucas LaBuff](https://github.com/96-LB))
+- [HTML] Changed tooltips on standard emoji to show emoji code instead of their raw string representations. (Thanks [@CanePlayz](https://github.com/CanePlayz) and [@Lucas LaBuff](https://github.com/96-LB))
+- [HTML] Added tooltips on individual messages to show when those messages were sent. 
+- [HTML] Updated colors and minor styling elements to match Discord's new style direction after rebranding.
+- [HTML] Updated Twemoji URLs to use SVG image variants for better rendering quality.
+- [HTML] Changed user avatar URLs to include predetermined size query parameter for better rendering quality.
+- Changed embed rendering logic to prefer Discord-proxied URLs for external content, in order to avoid unnecessary HTTP requests to third parties.
+- Fixed an issue where exporting with media sometimes resulted in a crash due to lack of permissions to change file attributes. These errors are now ignored, which means that the creation, write, and access dates of downloaded files may sometimes not match the dates provided by Discord's CDN.
+- [HTML] Fixed styling issues when rendering embed footers.
+- [HTML] Fixed an issue where links didn't render properly inside referenced messages.
+- [HTML] Fixed an issue where standalone emoji were incorrectly enlarged inside referenced messages.
+- [HTML] Fixed an issue where clicking on a referenced message revealed spoilers inside of it.
+- [GUI] Fixed an issue where the list of missing components, reported by the prerequisite check at application startup, included Windows updates that were not applicable to the user's system due to the fact that other superseding updates have already been installed. This issue only affected users running DiscordChatExporter on Windows 7.
+- [GUI] Fixed a few other minor issues related to the prerequisite installation window.
+
+### v2.27.1 (08-Jun-2021)
+
+- [GUI] Application will now detect if the required .NET Runtime or any of its prerequisites are missing and prompt the user to download and install them automatically. **Experimental feature, please test it out and report any issues you may find!**
+- [CLI] Fixed an issue where the application crashed when exporting a channel that had square brackets as part of its name or category name. (Thanks [@Lucas LaBuff](https://github.com/96-LB))
+
+### v2.27 (24-Apr-2021)
+
+- Added partitioning by file size. You can now use values such as `10mb` to indicate a size-based cut off point, in addition to values like `10` to indicate a number of messages. (Thanks [@Andrew Kolos](https://github.com/andrewkolos))
+- [CLI] Improved formatting and progress reporting.
+- [CLI] Changed `export` command so that it can accept multiple channel IDs passed to `-c|--channel` option. This makes it possible to export multiple channels at once while benefiting from parallelization.
+- [JSON] Added `color` field to message author. This is a hex string that represents user's color, inherited from their roles. (Thanks [@rtm516](https://github.com/rtm516))
+- [JSON] Added `categoryId` field to the root. This represents the ID of the category channel that the currently exported channel belongs to. (Thanks [@rtm516](https://github.com/rtm516))
+- [JSON] Fixed an issue where user discriminator was written without leading zeroes. (Thanks [@Lucas LaBuff](https://github.com/96-LB))
+- [JSON] Fixed an issue where the application sometimes crashed with an error saying `']' invalid without a matching open`, which was just a validation message that masked the actual error behind the failure. (Thanks [@Lucas LaBuff](https://github.com/96-LB))
+- Fixed an issue where progress was not reported correctly if the channel didn't have any messages in the specified time range.
+
 ### v2.26.1 (06-Feb-2021)
 
 - [CLI] Added support for file name templates, which allow you to dynamically generate output file names based on channel and guild metadata. (Thanks [@Lucas LaBuff](https://github.com/96-LB))
@@ -62,7 +96,7 @@
 
 ### v2.21 (18-Jul-2020)
 
-- Added a new option that enables self-contained exports for all output formats. You can turn it on in the export setup dialog in GUI or using the `--media` option in CLI. When using this, the application will additionally download any media content directly referenced from the exported file instead of linking back to Discord CDN. The files which are downloaded include: guild icons, user avatars, attachments, embedded images, reaction emojis. Note that only files which are actually referenced by the export are downloaded, which means that, for example, user avatars will not be downloaded when using plain text export format. This option is not meant to enable complete offline viewing for HTML exports, but rather to make it easier to archive media content that may eventually get deleted from Discord servers. Also keep in mind that this option may make the export drastically slower and the total file size larger.
+- Added a new option that enables self-contained exports for all output formats. You can turn it on in the export setup dialog in GUI or using the `--media` option in CLI. When using this, the application will additionally download any media content directly referenced from the exported file instead of linking back to Discord CDN. The files which are downloaded include: guild icons, user avatars, attachments, embedded images, reaction emoji. Note that only files which are actually referenced by the export are downloaded, which means that, for example, user avatars will not be downloaded when using plain text export format. This option is not meant to enable complete offline viewing for HTML exports, but rather to make it easier to archive media content that may eventually get deleted from Discord servers. Also keep in mind that this option may make the export drastically slower and the total file size larger.
 - Changed "discordapp.com" to "discord.com" where applicable as Discord is migrating to a new domain. CDN will remain on "cdn.discordapp.com" for the foreseeable future.
 
 Note that all existing and current HTML exports will likely not render accurately because Discord enabled CORS for their font resources, which prevents them from loading locally. Please refer to [issue #322](https://github.com/Tyrrrz/DiscordChatExporter/issues/322) for discussion on this topic. 
@@ -101,7 +135,7 @@ Note that all existing and current HTML exports will likely not render accuratel
 
 - Fixed an issue where an empty file was produced when exporting a channel with no messages (for specified period). With the new behavior, no file will be created and instead a message will be shown to the user informing of the failure.
 - [HTML/TXT] Added message count to the bottom of the file. This number shows how many messages were exported as part of the current file. Prior to 2.16 this number was present along with the rest of the metadata at the top, then removed due to changes in the exporter, and now brought back at the end of the file instead.
-- [HTML] Fixed an issue where some emojis were not properly rendered.
+- [HTML] Fixed an issue where some emoji were not properly rendered.
 - [GUI] Added a setting that lets you configure whether to remember the last used token. Previously it was the default behavior, but now you can disable it if you don't want the token persisted on your system.
 
 ### v2.16 (08-Dec-2019)
@@ -114,7 +148,7 @@ Note that all existing and current HTML exports will likely not render accuratel
 - Fixed various issues that resulted in exceptions during export process.
 - [HTML/TXT] Removed message count from the metadata. Due to the fact that the messages are exported as they are streamed, total number of messages is not known ahead of time.
 - [HTML] Changed default color of the embed color pill to match the theme.
-- [HTML] Changed emoji parser to be less greedy. As a result it should match fewer character sequences that look like emojis but really aren't, but on the other hand it might miss some actual emojis. This means that some standard emojis (i.e. not custom server emojis) may not look like in Discord. This is a compromise I'm willing to take because detecting emojis in text is really hard to get right and not worth it at all.
+- [HTML] Changed emoji parser to be less greedy. As a result it should match fewer character sequences that look like emoji but really aren't, but on the other hand it might miss some actual emoji. This means that some standard emoji (i.e. not custom server emoji) may not look like in Discord. This is a compromise I'm willing to take because detecting emoji in text is really hard to get right and not worth it at all.
 - [HTML] Some other minor styling adjustments.
 - [CSV] Replaced semicolons (;) with (,) as separators.
 
@@ -155,8 +189,8 @@ Please note that CSV export is most likely not going to receive future updates a
 ### v2.12.1 (12-Apr-2019)
 
 - [GUI] Fixed an issue where the app crashed when trying to export multiple channels.
-- [HTML] Fixed an issue where some of the emojis were rendered via Twemoji while Discord renders them as plain text.
-- [HTML] Fixed an issue where emojis weren't jumbo if there were more than one of them.
+- [HTML] Fixed an issue where some of the emoji were rendered via Twemoji while Discord renders them as plain text.
+- [HTML] Fixed an issue where emoji weren't jumbo if there were more than one of them.
 
 ### v2.12 (11-Apr-2019)
 
@@ -178,15 +212,15 @@ Please note that CSV export is most likely not going to receive future updates a
 
 ### v2.10.1 (06-Mar-2019)
 
-- [HTML] Fixed an issue where multiple emojis on a single line would get rendered as one emoji.
+- [HTML] Fixed an issue where multiple emoji on a single line would get rendered as one emoji.
 - [HTML] Fixed an issue where an open square bracket character would incorrectly render as an emoji.
 - [HTML] Added alt text to emoji images so that they will be rendered using default font when Twemoji images are not available.
 
 ### v2.10 (03-Mar-2019)
 
 - [HTML] Reworked the entire markdown parsing engine which fixes numerous rendering inconsistencies (over 15 issues fixed).
-- [HTML] Added support for animated emojis.
-- [HTML] Standard emojis are now rendered using Twemoji, the same image set that Discord uses.
+- [HTML] Added support for animated emoji.
+- [HTML] Standard emoji are now rendered using Twemoji, the same image set that Discord uses.
 - [HTML] Fixed an issue where video attachments would render incorrectly.
 - [HTML] Minor fixes in styling.
 - [GUI] Aggregated export progress is now shown in the taskbar.
@@ -246,7 +280,7 @@ Please note that CSV export is most likely not going to receive future updates a
 - Added support for reactions (HTML only).
 - Selected date range is now shown in the export (HTML and PlainText).
 - Added placeholders for guild icons to display while the icons are loading.
-- Added support for jumbo emojis (custom emojis only).
+- Added support for jumbo emoji (custom emoji only).
 - Added basic retry policy for 429 error responses.
 - Added validation for from/to dates in the UI which prevents choosing invalid date ranges.
 - Added an error message when trying to export a deleted channel.
@@ -270,7 +304,7 @@ Please note that CSV export is most likely not going to receive future updates a
 
 - Improved message date filtering, it's now marginally faster.
 - Fixed underscores not recognized as italics in markdown.
-- Added support for custom emojis.
+- Added support for custom emoji.
 - Added support for user and role mentions.
 - Added support for channel mentions.
 - Fixed text in pre blocks not being wrapped correctly.

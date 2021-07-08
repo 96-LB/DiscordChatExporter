@@ -28,7 +28,9 @@ namespace DiscordChatExporter.Domain.Discord
         }
 
         public DiscordClient(AuthToken token)
-            : this(Http.Client, token) {}
+            : this(Http.Client, token)
+        {
+        }
 
         private async ValueTask<HttpResponseMessage> GetResponseAsync(string url) =>
             await Http.ResponsePolicy.ExecuteAsync(async () =>
@@ -63,7 +65,7 @@ namespace DiscordChatExporter.Domain.Discord
 
             return response.IsSuccessStatusCode
                 ? await response.Content.ReadAsJsonAsync()
-                : (JsonElement?) null;
+                : null;
         }
 
         public async IAsyncEnumerable<Guild> GetUserGuildsAsync()
@@ -117,21 +119,22 @@ namespace DiscordChatExporter.Domain.Discord
             {
                 var response = await GetJsonResponseAsync($"guilds/{guildId}/channels");
 
-                var orderedResponse = response
+                var responseOrdered = response
                     .EnumerateArray()
                     .OrderBy(j => j.GetProperty("position").GetInt32())
-                    .ThenBy(j => ulong.Parse(j.GetProperty("id").GetString()));
+                    .ThenBy(j => Snowflake.Parse(j.GetProperty("id").GetString()))
+                    .ToArray();
 
-                var categories = orderedResponse
-                    .Where(j => j.GetProperty("type").GetInt32() == (int)ChannelType.GuildCategory)
+                var categories = responseOrdered
+                    .Where(j => j.GetProperty("type").GetInt32() == (int) ChannelType.GuildCategory)
                     .Select((j, index) => ChannelCategory.Parse(j, index + 1))
-                    .ToDictionary(j => j.Id.ToString());
+                    .ToDictionary(j => j.Id.ToString(), StringComparer.Ordinal);
 
                 var counts = new Dictionary<string, int>();
 
                 var position = 0;
 
-                foreach (var channelJson in orderedResponse)
+                foreach (var channelJson in responseOrdered)
                 {
                     var parentId = channelJson.GetPropertyOrNull("parent_id")?.GetString();
                     
@@ -145,7 +148,7 @@ namespace DiscordChatExporter.Domain.Discord
 
                     var channel = Channel.Parse(channelJson, category, position, count);
 
-                    // Skip non-text channels
+                    // We are only interested in text channels
                     if (!channel.IsTextChannel)
                         continue;
 
@@ -184,15 +187,12 @@ namespace DiscordChatExporter.Domain.Discord
                 var response = await GetJsonResponseAsync($"channels/{channelId}");
                 return ChannelCategory.Parse(response);
             }
-            /***
-             * In some cases, the Discord API returns an empty body when requesting some channel category info.
-             * Instead, we use an empty channel category as a fallback.
-             */
+            // In some cases, the Discord API returns an empty body when requesting channel category.
+            // Instead, we use an empty channel category as a fallback.
             catch (DiscordChatExporterException)
             {
                 return ChannelCategory.Empty;
             }
-
         }
 
         public async ValueTask<Channel> GetChannelAsync(Snowflake channelId)
@@ -227,7 +227,7 @@ namespace DiscordChatExporter.Domain.Discord
             IProgress<double>? progress = null)
         {
             // Get the last message in the specified range.
-            // This snapshots the boundaries, which means that messages posted after the exported started
+            // This snapshots the boundaries, which means that messages posted after the export started
             // will not appear in the output.
             // Additionally, it provides the date of the last message, which is used to calculate progress.
             var lastMessage = await TryGetLastMessageAsync(channelId, before);
@@ -266,11 +266,23 @@ namespace DiscordChatExporter.Domain.Discord
                     if (message.Timestamp > lastMessage.Timestamp)
                         yield break;
 
-                    // Report progress based on the duration of parsed messages divided by total
-                    progress?.Report(
-                        (message.Timestamp - firstMessage.Timestamp) /
-                        (lastMessage.Timestamp - firstMessage.Timestamp)
-                    );
+                    // Report progress based on the duration of exported messages divided by total
+                    if (progress is not null)
+                    {
+                        var exportedDuration = (message.Timestamp - firstMessage.Timestamp).Duration();
+                        var totalDuration = (lastMessage.Timestamp - firstMessage.Timestamp).Duration();
+
+                        if (totalDuration > TimeSpan.Zero)
+                        {
+                            progress.Report(exportedDuration / totalDuration);
+                        }
+                        // Avoid division by zero if all messages have the exact same timestamp
+                        // (which may be the case if there's only one message in the channel)
+                        else
+                        {
+                            progress.Report(1);
+                        }
+                    }
 
                     yield return message;
                     currentAfter = message.Id;

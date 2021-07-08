@@ -1,5 +1,6 @@
 ﻿using DiscordChatExporter.Core.Discord;
 using DiscordChatExporter.Core.Exporting;
+using DiscordChatExporter.Core.Exporting.Partitioning;
 using Tyrrrz.Settings;
 
 namespace DiscordChatExporter.Gui.Services
@@ -22,7 +23,7 @@ namespace DiscordChatExporter.Gui.Services
 
         public ExportFormat LastExportFormat { get; set; } = ExportFormat.HtmlDark;
 
-        public int? LastPartitionLimit { get; set; }
+        public string? LastPartitionLimitValue { get; set; }
 
         public bool LastShouldDownloadMedia { get; set; }
 
