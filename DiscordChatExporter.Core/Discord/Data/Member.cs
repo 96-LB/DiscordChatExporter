@@ -6,51 +6,41 @@ using DiscordChatExporter.Core.Discord.Data.Common;
 using DiscordChatExporter.Core.Utils.Extensions;
 using JsonExtensions.Reading;
 
-namespace DiscordChatExporter.Core.Discord.Data
+namespace DiscordChatExporter.Core.Discord.Data;
+
+// https://discord.com/developers/docs/resources/guild#guild-member-object
+public partial record Member(
+    User User,
+    string Nick,
+    IReadOnlyList<Snowflake> RoleIds) : IHasId
 {
-    // https://discord.com/developers/docs/resources/guild#guild-member-object
-    public partial class Member : IHasId
+    public Snowflake Id => User.Id;
+}
+
+public partial record Member
+{
+    public static Member CreateForUser(User user) => new(
+        user,
+        user.Name,
+        Array.Empty<Snowflake>()
+    );
+
+    public static Member Parse(JsonElement json)
     {
-        public Snowflake Id => User.Id;
+        var user = json.GetProperty("user").Pipe(User.Parse);
+        var nick = json.GetPropertyOrNull("nick")?.GetNonWhiteSpaceStringOrNull();
 
-        public User User { get; }
+        var roleIds = json
+            .GetPropertyOrNull("roles")?
+            .EnumerateArray()
+            .Select(j => j.GetNonWhiteSpaceString())
+            .Select(Snowflake.Parse)
+            .ToArray() ?? Array.Empty<Snowflake>();
 
-        public string Nick { get; }
-
-        public IReadOnlyList<Snowflake> RoleIds { get; }
-
-        public Member(User user, string nick, IReadOnlyList<Snowflake> roleIds)
-        {
-            User = user;
-            Nick = nick;
-            RoleIds = roleIds;
-        }
-
-        public override string ToString() => Nick;
-    }
-
-    public partial class Member
-    {
-        public static Member CreateForUser(User user) => new(
+        return new Member(
             user,
-            user.Name,
-            Array.Empty<Snowflake>()
+            nick ?? user.Name,
+            roleIds
         );
-
-        public static Member Parse(JsonElement json)
-        {
-            var user = json.GetProperty("user").Pipe(User.Parse);
-            var nick = json.GetPropertyOrNull("nick")?.GetString();
-
-            var roleIds =
-                json.GetPropertyOrNull("roles")?.EnumerateArray().Select(j => j.GetString()).Select(Snowflake.Parse).ToArray() ??
-                Array.Empty<Snowflake>();
-
-            return new Member(
-                user,
-                nick ?? user.Name,
-                roleIds
-            );
-        }
     }
 }

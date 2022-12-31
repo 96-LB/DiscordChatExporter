@@ -3,150 +3,155 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using DiscordChatExporter.Core.Discord.Data.Common;
+using DiscordChatExporter.Core.Discord.Data.Embeds;
 using DiscordChatExporter.Core.Utils.Extensions;
 using JsonExtensions.Reading;
 
-namespace DiscordChatExporter.Core.Discord.Data
+namespace DiscordChatExporter.Core.Discord.Data;
+
+// https://discord.com/developers/docs/resources/channel#message-object
+public record Message(
+    Snowflake Id,
+    MessageKind Kind,
+    User Author,
+    DateTimeOffset Timestamp,
+    DateTimeOffset? EditedTimestamp,
+    DateTimeOffset? CallEndedTimestamp,
+    bool IsPinned,
+    string Content,
+    IReadOnlyList<Attachment> Attachments,
+    IReadOnlyList<Embed> Embeds,
+    IReadOnlyList<Sticker> Stickers,
+    IReadOnlyList<Reaction> Reactions,
+    IReadOnlyList<User> MentionedUsers,
+    MessageReference? Reference,
+    Message? ReferencedMessage) : IHasId
 {
-    // https://discord.com/developers/docs/resources/channel#message-object-message-types
-    public enum MessageType
+    private static IReadOnlyList<Embed> NormalizeEmbeds(IReadOnlyList<Embed> embeds)
     {
-        Default = 0,
-        RecipientAdd = 1,
-        RecipientRemove = 2,
-        Call = 3,
-        ChannelNameChange = 4,
-        ChannelIconChange = 5,
-        ChannelPinnedMessage = 6,
-        GuildMemberJoin = 7,
-        Reply = 19
-    }
+        if (embeds.Count <= 1)
+            return embeds;
 
-    // https://discord.com/developers/docs/resources/channel#message-object
-    public partial class Message : IHasId
-    {
-        public Snowflake Id { get; }
+        // Discord API doesn't support embeds with multiple images, even though the Discord client does.
+        // To work around this, it seems that the API returns multiple consecutive embeds with different images,
+        // which are then merged together on the client. We need to replicate the same behavior ourselves.
+        // Currently, only known case where this workaround is required is Twitter embeds.
+        // https://github.com/Tyrrrz/DiscordChatExporter/issues/695
 
-        public MessageType Type { get; }
+        var normalizedEmbeds = new List<Embed>();
 
-        public User Author { get; }
-
-        public DateTimeOffset Timestamp { get; }
-
-        public DateTimeOffset? EditedTimestamp { get; }
-
-        public DateTimeOffset? CallEndedTimestamp { get; }
-
-        public bool IsPinned { get; }
-
-        public string Content { get; }
-
-        public IReadOnlyList<Attachment> Attachments { get; }
-
-        public IReadOnlyList<Embed> Embeds { get; }
-
-        public IReadOnlyList<Reaction> Reactions { get; }
-
-        public IReadOnlyList<User> MentionedUsers { get; }
-
-        public MessageReference? Reference { get; }
-
-        public Message? ReferencedMessage { get; }
-
-        public Message(
-            Snowflake id,
-            MessageType type,
-            User author,
-            DateTimeOffset timestamp,
-            DateTimeOffset? editedTimestamp,
-            DateTimeOffset? callEndedTimestamp,
-            bool isPinned,
-            string content,
-            IReadOnlyList<Attachment> attachments,
-            IReadOnlyList<Embed> embeds,
-            IReadOnlyList<Reaction> reactions,
-            IReadOnlyList<User> mentionedUsers,
-            MessageReference? messageReference,
-            Message? referencedMessage)
+        for (var i = 0; i < embeds.Count; i++)
         {
-            Id = id;
-            Type = type;
-            Author = author;
-            Timestamp = timestamp;
-            EditedTimestamp = editedTimestamp;
-            CallEndedTimestamp = callEndedTimestamp;
-            IsPinned = isPinned;
-            Content = content;
-            Attachments = attachments;
-            Embeds = embeds;
-            Reactions = reactions;
-            MentionedUsers = mentionedUsers;
-            Reference = messageReference;
-            ReferencedMessage = referencedMessage;
-        }
+            var embed = embeds[i];
 
-        public override string ToString() => Content;
-    }
-
-    public partial class Message
-    {
-        public static Message Parse(JsonElement json)
-        {
-            var id = json.GetProperty("id").GetString().Pipe(Snowflake.Parse);
-            var author = json.GetProperty("author").Pipe(User.Parse);
-            var timestamp = json.GetProperty("timestamp").GetDateTimeOffset();
-            var editedTimestamp = json.GetPropertyOrNull("edited_timestamp")?.GetDateTimeOffset();
-            var callEndedTimestamp = json.GetPropertyOrNull("call")?.GetPropertyOrNull("ended_timestamp")?.GetDateTimeOffset();
-            var type = (MessageType) json.GetProperty("type").GetInt32();
-            var isPinned = json.GetPropertyOrNull("pinned")?.GetBoolean() ?? false;
-            var messageReference = json.GetPropertyOrNull("message_reference")?.Pipe(MessageReference.Parse);
-            var referencedMessage = json.GetPropertyOrNull("referenced_message")?.Pipe(Parse);
-
-            var content = type switch
+            if (embed.Url?.Contains("://twitter.com/", StringComparison.OrdinalIgnoreCase) == true)
             {
-                MessageType.RecipientAdd => "Added a recipient.",
-                MessageType.RecipientRemove => "Removed a recipient.",
-                MessageType.Call =>
-                    $"Started a call that lasted {callEndedTimestamp?.Pipe(t => t - timestamp).Pipe(t => (int) t.TotalMinutes) ?? 0} minutes.",
-                MessageType.ChannelNameChange => "Changed the channel name.",
-                MessageType.ChannelIconChange => "Changed the channel icon.",
-                MessageType.ChannelPinnedMessage => "Pinned a message.",
-                MessageType.GuildMemberJoin => "Joined the server.",
-                _ => json.GetPropertyOrNull("content")?.GetString() ?? ""
-            };
+                // Find embeds with the same URL that only contain a single image and nothing else
+                var trailingEmbeds = embeds
+                    .Skip(i + 1)
+                    .TakeWhile(e =>
+                        e.Url == embed.Url &&
+                        e.Timestamp is null &&
+                        e.Author is null &&
+                        e.Color is null &&
+                        string.IsNullOrWhiteSpace(e.Description) &&
+                        !e.Fields.Any() &&
+                        e.Images.Count == 1 &&
+                        e.Footer is null
+                    )
+                    .ToArray();
 
-            var attachments =
-                json.GetPropertyOrNull("attachments")?.EnumerateArray().Select(Attachment.Parse).ToArray() ??
-                Array.Empty<Attachment>();
+                if (trailingEmbeds.Any())
+                {
+                    // Concatenate all images into one embed
+                    var images = embed.Images.Concat(trailingEmbeds.SelectMany(e => e.Images)).ToArray();
+                    normalizedEmbeds.Add(embed with { Images = images });
 
-            var embeds =
-                json.GetPropertyOrNull("embeds")?.EnumerateArray().Select(Embed.Parse).ToArray() ??
-                Array.Empty<Embed>();
-
-            var reactions =
-                json.GetPropertyOrNull("reactions")?.EnumerateArray().Select(Reaction.Parse).ToArray() ??
-                Array.Empty<Reaction>();
-
-            var mentionedUsers =
-                json.GetPropertyOrNull("mentions")?.EnumerateArray().Select(User.Parse).ToArray() ??
-                Array.Empty<User>();
-
-            return new Message(
-                id,
-                type,
-                author,
-                timestamp,
-                editedTimestamp,
-                callEndedTimestamp,
-                isPinned,
-                content,
-                attachments,
-                embeds,
-                reactions,
-                mentionedUsers,
-                messageReference,
-                referencedMessage
-            );
+                    i += trailingEmbeds.Length;
+                }
+                else
+                {
+                    normalizedEmbeds.Add(embed);
+                }
+            }
+            else
+            {
+                normalizedEmbeds.Add(embed);
+            }
         }
+
+        return normalizedEmbeds;
+    }
+
+    public static Message Parse(JsonElement json)
+    {
+        var id = json.GetProperty("id").GetNonWhiteSpaceString().Pipe(Snowflake.Parse);
+        var kind = (MessageKind)json.GetProperty("type").GetInt32();
+        var author = json.GetProperty("author").Pipe(User.Parse);
+
+        var timestamp = json.GetProperty("timestamp").GetDateTimeOffset();
+        var editedTimestamp = json.GetPropertyOrNull("edited_timestamp")?.GetDateTimeOffset();
+        var callEndedTimestamp = json
+            .GetPropertyOrNull("call")?
+            .GetPropertyOrNull("ended_timestamp")?
+            .GetDateTimeOffset();
+
+        var isPinned = json.GetPropertyOrNull("pinned")?.GetBooleanOrNull() ?? false;
+
+        var content = kind switch
+        {
+            MessageKind.RecipientAdd => "Added a recipient.",
+            MessageKind.RecipientRemove => "Removed a recipient.",
+            MessageKind.Call =>
+                $"Started a call that lasted {callEndedTimestamp?.Pipe(t => t - timestamp).Pipe(t => (int)t.TotalMinutes) ?? 0} minutes.",
+            MessageKind.ChannelNameChange => "Changed the channel name.",
+            MessageKind.ChannelIconChange => "Changed the channel icon.",
+            MessageKind.ChannelPinnedMessage => "Pinned a message.",
+            MessageKind.ThreadCreated => "Started a thread.",
+            MessageKind.GuildMemberJoin => "Joined the server.",
+            _ => json.GetPropertyOrNull("content")?.GetStringOrNull() ?? ""
+        };
+
+        var attachments =
+            json.GetPropertyOrNull("attachments")?.EnumerateArrayOrNull()?.Select(Attachment.Parse).ToArray() ??
+            Array.Empty<Attachment>();
+
+        var embeds = NormalizeEmbeds(
+            json.GetPropertyOrNull("embeds")?.EnumerateArrayOrNull()?.Select(Embed.Parse).ToArray() ??
+            Array.Empty<Embed>()
+        );
+
+        var stickers =
+            json.GetPropertyOrNull("sticker_items")?.EnumerateArrayOrNull()?.Select(Sticker.Parse).ToArray() ??
+            Array.Empty<Sticker>();
+
+        var reactions =
+            json.GetPropertyOrNull("reactions")?.EnumerateArrayOrNull()?.Select(Reaction.Parse).ToArray() ??
+            Array.Empty<Reaction>();
+
+        var mentionedUsers =
+            json.GetPropertyOrNull("mentions")?.EnumerateArrayOrNull()?.Select(User.Parse).ToArray() ??
+            Array.Empty<User>();
+
+        var messageReference = json.GetPropertyOrNull("message_reference")?.Pipe(MessageReference.Parse);
+        var referencedMessage = json.GetPropertyOrNull("referenced_message")?.Pipe(Parse);
+
+        return new Message(
+            id,
+            kind,
+            author,
+            timestamp,
+            editedTimestamp,
+            callEndedTimestamp,
+            isPinned,
+            content,
+            attachments,
+            embeds,
+            stickers,
+            reactions,
+            mentionedUsers,
+            messageReference,
+            referencedMessage
+        );
     }
 }

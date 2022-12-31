@@ -1,74 +1,79 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using System.Text.Json;
 using DiscordChatExporter.Core.Utils;
 using DiscordChatExporter.Core.Utils.Extensions;
 using JsonExtensions.Reading;
-using Tyrrrz.Extensions;
 
-namespace DiscordChatExporter.Core.Discord.Data
+namespace DiscordChatExporter.Core.Discord.Data;
+
+// https://discord.com/developers/docs/resources/emoji#emoji-object
+public partial record Emoji(
+    // Only present on custom emoji
+    Snowflake? Id,
+    // Name of a custom emoji (e.g. LUL) or actual representation of a standard emoji (e.g. 🙂)
+    string Name,
+    bool IsAnimated,
+    string ImageUrl)
 {
-    // https://discord.com/developers/docs/resources/emoji#emoji-object
-    public partial class Emoji
+    // Name of a custom emoji (e.g. LUL) or name of a standard emoji (e.g. slight_smile)
+    public string Code => Id is not null
+        ? Name
+        : EmojiIndex.TryGetCode(Name) ?? Name;
+}
+
+public partial record Emoji
+{
+    private static string GetTwemojiId(string name)
     {
-        // Only present on custom emoji
-        public string? Id { get; }
+        var runes = name.GetRunes().ToArray();
 
-        // Name of custom emoji (e.g. LUL) or actual representation of standard emoji (e.g. 🙂)
-        public string Name { get; }
+        // Variant selector rune is skipped in Twemoji names, except when the emoji also contains a zero-width joiner.
+        // VS = 0xfe0f; ZWJ = 0x200d.
+        var filteredRunes = runes.Any(r => r.Value == 0x200d)
+            ? runes
+            : runes.Where(r => r.Value != 0xfe0f);
 
-        // Name of custom emoji (e.g. LUL) or name of standard emoji (e.g. slight_smile)
-        public string Code => !string.IsNullOrWhiteSpace(Id)
-            ? Name
-            : EmojiIndex.TryGetCode(Name) ?? Name;
-
-        public bool IsAnimated { get; }
-
-        public string ImageUrl { get; }
-
-        public Emoji(string? id, string name, bool isAnimated, string imageUrl)
-        {
-            Id = id;
-            Name = name;
-            IsAnimated = isAnimated;
-            ImageUrl = imageUrl;
-        }
-
-        public override string ToString() => Name;
+        return string.Join(
+            "-",
+            filteredRunes.Select(r => r.Value.ToString("x"))
+        );
     }
 
-    public partial class Emoji
+    private static string GetImageUrl(Snowflake id, bool isAnimated) => isAnimated
+        ? $"https://cdn.discordapp.com/emojis/{id}.gif"
+        : $"https://cdn.discordapp.com/emojis/{id}.png";
+
+    private static string GetImageUrl(string name) =>
+        $"https://twemoji.maxcdn.com/v/latest/svg/{GetTwemojiId(name)}.svg";
+
+    public static string GetImageUrl(Snowflake? id, string? name, bool isAnimated)
     {
-        private static string GetTwemojiName(string name) => name
-            .GetRunes()
-            // Variant selector rune is skipped in Twemoji names
-            .Where(r => r.Value != 0xfe0f)
-            .Select(r => r.Value.ToString("x"))
-            .JoinToString("-");
+        // Custom emoji
+        if (id is not null)
+            return GetImageUrl(id.Value, isAnimated);
 
-        public static string GetImageUrl(string? id, string name, bool isAnimated)
-        {
-            // Custom emoji
-            if (!string.IsNullOrWhiteSpace(id))
-            {
-                return isAnimated
-                    ? $"https://cdn.discordapp.com/emojis/{id}.gif"
-                    : $"https://cdn.discordapp.com/emojis/{id}.png";
-            }
+        // Standard emoji
+        if (!string.IsNullOrWhiteSpace(name))
+            return GetImageUrl(name);
 
-            // Standard emoji
-            var twemojiName = GetTwemojiName(name);
-            return $"https://twemoji.maxcdn.com/2/svg/{twemojiName}.svg";
-        }
+        // Either ID or name should be set
+        throw new ApplicationException("Emoji has neither ID nor name set.");
+    }
 
-        public static Emoji Parse(JsonElement json)
-        {
-            var id = json.GetPropertyOrNull("id")?.GetString();
-            var name = json.GetProperty("name").GetString();
-            var isAnimated = json.GetPropertyOrNull("animated")?.GetBoolean() ?? false;
+    public static Emoji Parse(JsonElement json)
+    {
+        var id = json.GetPropertyOrNull("id")?.GetNonWhiteSpaceStringOrNull()?.Pipe(Snowflake.Parse);
+        var name = json.GetPropertyOrNull("name")?.GetNonWhiteSpaceStringOrNull();
+        var isAnimated = json.GetPropertyOrNull("animated")?.GetBooleanOrNull() ?? false;
+        var imageUrl = GetImageUrl(id, name, isAnimated);
 
-            var imageUrl = GetImageUrl(id, name, isAnimated);
-
-            return new Emoji(id, name, isAnimated, imageUrl);
-        }
+        return new Emoji(
+            id,
+            // Name may be missing if it's an emoji inside a reaction
+            name ?? "<unknown emoji>",
+            isAnimated,
+            imageUrl
+        );
     }
 }

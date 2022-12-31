@@ -1,13 +1,12 @@
 ﻿using DiscordChatExporter.Core.Discord.Data;
 
-namespace DiscordChatExporter.Core.Exporting.Filtering
+namespace DiscordChatExporter.Core.Exporting.Filtering;
+
+internal class NegatedMessageFilter : MessageFilter
 {
-    public class NegatedMessageFilter : MessageFilter
-    {
-        private readonly MessageFilter _filter;
+    private readonly MessageFilter _filter;
 
-        public NegatedMessageFilter(MessageFilter filter) => _filter = filter;
+    public NegatedMessageFilter(MessageFilter filter) => _filter = filter;
 
-        public override bool Filter(Message message) => !_filter.Filter(message);
-    }
+    public override bool IsMatch(Message message) => !_filter.IsMatch(message);
 }

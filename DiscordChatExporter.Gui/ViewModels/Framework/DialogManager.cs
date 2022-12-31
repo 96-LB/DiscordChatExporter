@@ -1,63 +1,75 @@
 ﻿using System;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using MaterialDesignThemes.Wpf;
 using Microsoft.Win32;
 using Ookii.Dialogs.Wpf;
 using Stylet;
 
-namespace DiscordChatExporter.Gui.ViewModels.Framework
-{
-    public class DialogManager
-    {
-        private readonly IViewManager _viewManager;
+namespace DiscordChatExporter.Gui.ViewModels.Framework;
 
-        public DialogManager(IViewManager viewManager)
+public class DialogManager : IDisposable
+{
+    private readonly IViewManager _viewManager;
+    private readonly SemaphoreSlim _dialogLock = new(1, 1);
+
+    public DialogManager(IViewManager viewManager)
+    {
+        _viewManager = viewManager;
+    }
+
+    public async ValueTask<T?> ShowDialogAsync<T>(DialogScreen<T> dialogScreen)
+    {
+        var view = _viewManager.CreateAndBindViewForModelIfNecessary(dialogScreen);
+
+        void OnDialogOpened(object? openSender, DialogOpenedEventArgs openArgs)
         {
-            _viewManager = viewManager;
+            void OnScreenClosed(object? closeSender, EventArgs args)
+            {
+                openArgs.Session.Close();
+                dialogScreen.Closed -= OnScreenClosed;
+            }
+            dialogScreen.Closed += OnScreenClosed;
         }
 
-        public async ValueTask<T?> ShowDialogAsync<T>(DialogScreen<T> dialogScreen)
+        await _dialogLock.WaitAsync();
+        try
         {
-            var view = _viewManager.CreateAndBindViewForModelIfNecessary(dialogScreen);
-
-            void OnDialogOpened(object? sender, DialogOpenedEventArgs openArgs)
-            {
-                void OnScreenClosed(object? o, EventArgs closeArgs)
-                {
-                    openArgs.Session.Close();
-                    dialogScreen.Closed -= OnScreenClosed;
-                }
-
-                dialogScreen.Closed += OnScreenClosed;
-            }
-
             await DialogHost.Show(view, OnDialogOpened);
-
             return dialogScreen.DialogResult;
         }
-
-        public string? PromptSaveFilePath(string filter = "All files|*.*", string defaultFilePath = "")
+        finally
         {
-            var dialog = new SaveFileDialog
-            {
-                Filter = filter,
-                AddExtension = true,
-                FileName = defaultFilePath,
-                DefaultExt = Path.GetExtension(defaultFilePath)
-            };
-
-            return dialog.ShowDialog() == true ? dialog.FileName : null;
+            _dialogLock.Release();
         }
+    }
 
-        public string? PromptDirectoryPath(string defaultDirPath = "")
+    public string? PromptSaveFilePath(string filter = "All files|*.*", string defaultFilePath = "")
+    {
+        var dialog = new SaveFileDialog
         {
-            var dialog = new VistaFolderBrowserDialog
-            {
-                SelectedPath = defaultDirPath
-            };
+            Filter = filter,
+            AddExtension = true,
+            FileName = defaultFilePath,
+            DefaultExt = Path.GetExtension(defaultFilePath)
+        };
 
-            return dialog.ShowDialog() == true ? dialog.SelectedPath : null;
-        }
+        return dialog.ShowDialog() == true ? dialog.FileName : null;
+    }
+
+    public string? PromptDirectoryPath(string defaultDirPath = "")
+    {
+        var dialog = new VistaFolderBrowserDialog
+        {
+            SelectedPath = defaultDirPath
+        };
+
+        return dialog.ShowDialog() == true ? dialog.SelectedPath : null;
+    }
+
+    public void Dispose()
+    {
+        _dialogLock.Dispose();
     }
 }

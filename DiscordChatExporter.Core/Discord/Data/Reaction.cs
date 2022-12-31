@@ -1,32 +1,16 @@
 ﻿using System.Text.Json;
 using DiscordChatExporter.Core.Utils.Extensions;
 
-namespace DiscordChatExporter.Core.Discord.Data
+namespace DiscordChatExporter.Core.Discord.Data;
+
+// https://discord.com/developers/docs/resources/channel#reaction-object
+public record Reaction(Emoji Emoji, int Count)
 {
-    // https://discord.com/developers/docs/resources/channel#reaction-object
-    public partial class Reaction
+    public static Reaction Parse(JsonElement json)
     {
-        public Emoji Emoji { get; }
+        var emoji = json.GetProperty("emoji").Pipe(Emoji.Parse);
+        var count = json.GetProperty("count").GetInt32();
 
-        public int Count { get; }
-
-        public Reaction(Emoji emoji, int count)
-        {
-            Emoji = emoji;
-            Count = count;
-        }
-
-        public override string ToString() => $"{Emoji} ({Count})";
-    }
-
-    public partial class Reaction
-    {
-        public static Reaction Parse(JsonElement json)
-        {
-            var emoji = json.GetProperty("emoji").Pipe(Emoji.Parse);
-            var count = json.GetProperty("count").GetInt32();
-
-            return new Reaction(emoji, count);
-        }
+        return new Reaction(emoji, count);
     }
 }

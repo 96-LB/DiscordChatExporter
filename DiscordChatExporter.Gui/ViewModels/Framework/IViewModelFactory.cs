@@ -1,12 +1,16 @@
-﻿using DiscordChatExporter.Gui.ViewModels.Dialogs;
+﻿using DiscordChatExporter.Gui.ViewModels.Components;
+using DiscordChatExporter.Gui.ViewModels.Dialogs;
 
-namespace DiscordChatExporter.Gui.ViewModels.Framework
+namespace DiscordChatExporter.Gui.ViewModels.Framework;
+
+// Used to instantiate new view models while making use of dependency injection
+public interface IViewModelFactory
 {
-    // Used to instantiate new view models while making use of dependency injection
-    public interface IViewModelFactory
-    {
-        ExportSetupViewModel CreateExportSetupViewModel();
+    DashboardViewModel CreateDashboardViewModel();
+    
+    ExportSetupViewModel CreateExportSetupViewModel();
 
-        SettingsViewModel CreateSettingsViewModel();
-    }
+    MessageBoxViewModel CreateMessageBoxViewModel();
+
+    SettingsViewModel CreateSettingsViewModel();
 }

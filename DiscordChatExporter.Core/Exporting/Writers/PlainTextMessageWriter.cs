@@ -1,163 +1,256 @@
 ﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using DiscordChatExporter.Core.Discord.Data;
+using DiscordChatExporter.Core.Discord.Data.Embeds;
 using DiscordChatExporter.Core.Exporting.Writers.MarkdownVisitors;
-using Tyrrrz.Extensions;
 
-namespace DiscordChatExporter.Core.Exporting.Writers
+namespace DiscordChatExporter.Core.Exporting.Writers;
+
+internal class PlainTextMessageWriter : MessageWriter
 {
-    internal class PlainTextMessageWriter : MessageWriter
+    private readonly TextWriter _writer;
+
+    public PlainTextMessageWriter(Stream stream, ExportContext context)
+        : base(stream, context)
     {
-        private readonly TextWriter _writer;
+        _writer = new StreamWriter(stream);
+    }
 
-        public PlainTextMessageWriter(Stream stream, ExportContext context)
-            : base(stream, context)
+    private ValueTask<string> FormatMarkdownAsync(
+        string markdown,
+        CancellationToken cancellationToken = default) =>
+        PlainTextMarkdownVisitor.FormatAsync(Context, markdown, cancellationToken);
+
+    private async ValueTask WriteMessageHeaderAsync(Message message)
+    {
+        // Timestamp & author
+        await _writer.WriteAsync($"[{Context.FormatDate(message.Timestamp)}]");
+        await _writer.WriteAsync($" {message.Author.FullName}");
+
+        // Whether the message is pinned
+        if (message.IsPinned)
+            await _writer.WriteAsync(" (pinned)");
+
+        await _writer.WriteLineAsync();
+    }
+
+    private async ValueTask WriteAttachmentsAsync(
+        IReadOnlyList<Attachment> attachments,
+        CancellationToken cancellationToken = default)
+    {
+        if (!attachments.Any())
+            return;
+
+        await _writer.WriteLineAsync("{Attachments}");
+
+        foreach (var attachment in attachments)
         {
-            _writer = new StreamWriter(stream);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            await _writer.WriteLineAsync(
+                await Context.ResolveAssetUrlAsync(attachment.Url, cancellationToken)
+            );
         }
 
-        private string FormatMarkdown(string? markdown) =>
-            PlainTextMarkdownVisitor.Format(Context, markdown ?? "");
+        await _writer.WriteLineAsync();
+    }
 
-        private async ValueTask WriteMessageHeaderAsync(Message message)
+    private async ValueTask WriteEmbedsAsync(
+        IReadOnlyList<Embed> embeds,
+        CancellationToken cancellationToken = default)
+    {
+        foreach (var embed in embeds)
         {
-            // Timestamp & author
-            await _writer.WriteAsync($"[{Context.FormatDate(message.Timestamp)}]");
-            await _writer.WriteAsync($" {message.Author.FullName}");
+            cancellationToken.ThrowIfCancellationRequested();
 
-            // Whether the message is pinned
-            if (message.IsPinned)
-                await _writer.WriteAsync(" (pinned)");
+            await _writer.WriteLineAsync("{Embed}");
 
-            await _writer.WriteLineAsync();
-        }
-
-        private async ValueTask WriteAttachmentsAsync(IReadOnlyList<Attachment> attachments)
-        {
-            if (!attachments.Any())
-                return;
-
-            await _writer.WriteLineAsync("{Attachments}");
-
-            foreach (var attachment in attachments)
-                await _writer.WriteLineAsync(await Context.ResolveMediaUrlAsync(attachment.Url));
-
-            await _writer.WriteLineAsync();
-        }
-
-        private async ValueTask WriteEmbedsAsync(IReadOnlyList<Embed> embeds)
-        {
-            foreach (var embed in embeds)
+            if (!string.IsNullOrWhiteSpace(embed.Author?.Name))
             {
-                await _writer.WriteLineAsync("{Embed}");
+                await _writer.WriteLineAsync(embed.Author.Name);
+            }
 
-                if (!string.IsNullOrWhiteSpace(embed.Author?.Name))
-                    await _writer.WriteLineAsync(embed.Author.Name);
+            if (!string.IsNullOrWhiteSpace(embed.Url))
+            {
+                await _writer.WriteLineAsync(embed.Url);
+            }
 
-                if (!string.IsNullOrWhiteSpace(embed.Url))
-                    await _writer.WriteLineAsync(embed.Url);
+            if (!string.IsNullOrWhiteSpace(embed.Title))
+            {
+                await _writer.WriteLineAsync(
+                    await FormatMarkdownAsync(embed.Title, cancellationToken)
+                );
+            }
 
-                if (!string.IsNullOrWhiteSpace(embed.Title))
-                    await _writer.WriteLineAsync(FormatMarkdown(embed.Title));
+            if (!string.IsNullOrWhiteSpace(embed.Description))
+            {
+                await _writer.WriteLineAsync(
+                    await FormatMarkdownAsync(embed.Description, cancellationToken)
+                );
+            }
 
-                if (!string.IsNullOrWhiteSpace(embed.Description))
-                    await _writer.WriteLineAsync(FormatMarkdown(embed.Description));
-
-                foreach (var field in embed.Fields)
+            foreach (var field in embed.Fields)
+            {
+                if (!string.IsNullOrWhiteSpace(field.Name))
                 {
-                    if (!string.IsNullOrWhiteSpace(field.Name))
-                        await _writer.WriteLineAsync(FormatMarkdown(field.Name));
-
-                    if (!string.IsNullOrWhiteSpace(field.Value))
-                        await _writer.WriteLineAsync(FormatMarkdown(field.Value));
+                    await _writer.WriteLineAsync(
+                        await FormatMarkdownAsync(field.Name, cancellationToken)
+                    );
                 }
 
-                if (!string.IsNullOrWhiteSpace(embed.Thumbnail?.Url))
-                    await _writer.WriteLineAsync(await Context.ResolveMediaUrlAsync(embed.Thumbnail.ProxyUrl ?? embed.Thumbnail.Url));
-
-                if (!string.IsNullOrWhiteSpace(embed.Image?.Url))
-                    await _writer.WriteLineAsync(await Context.ResolveMediaUrlAsync(embed.Image.ProxyUrl ?? embed.Image.Url));
-
-                if (!string.IsNullOrWhiteSpace(embed.Footer?.Text))
-                    await _writer.WriteLineAsync(embed.Footer.Text);
-
-                await _writer.WriteLineAsync();
+                if (!string.IsNullOrWhiteSpace(field.Value))
+                {
+                    await _writer.WriteLineAsync(
+                        await FormatMarkdownAsync(field.Value, cancellationToken)
+                    );
+                }
             }
-        }
 
-        private async ValueTask WriteReactionsAsync(IReadOnlyList<Reaction> reactions)
-        {
-            if (!reactions.Any())
-                return;
-
-            await _writer.WriteLineAsync("{Reactions}");
-
-            foreach (var reaction in reactions)
+            if (!string.IsNullOrWhiteSpace(embed.Thumbnail?.Url))
             {
-                await _writer.WriteAsync(reaction.Emoji.Name);
+                await _writer.WriteLineAsync(
+                    await Context.ResolveAssetUrlAsync(
+                        embed.Thumbnail.ProxyUrl ?? embed.Thumbnail.Url,
+                        cancellationToken
+                    )
+                );
+            }
 
-                if (reaction.Count > 1)
-                    await _writer.WriteAsync($" ({reaction.Count})");
+            foreach (var image in embed.Images)
+            {
+                if (!string.IsNullOrWhiteSpace(image.Url))
+                {
+                    await _writer.WriteLineAsync(
+                        await Context.ResolveAssetUrlAsync(
+                            image.ProxyUrl ?? image.Url,
+                            cancellationToken
+                        )
+                    );
+                }
+            }
 
-                await _writer.WriteAsync(' ');
+            if (!string.IsNullOrWhiteSpace(embed.Footer?.Text))
+            {
+                await _writer.WriteLineAsync(embed.Footer.Text);
             }
 
             await _writer.WriteLineAsync();
         }
+    }
 
-        public override async ValueTask WritePreambleAsync()
+    private async ValueTask WriteStickersAsync(
+        IReadOnlyList<Sticker> stickers,
+        CancellationToken cancellationToken = default)
+    {
+        if (!stickers.Any())
+            return;
+
+        await _writer.WriteLineAsync("{Stickers}");
+
+        foreach (var sticker in stickers)
         {
-            await _writer.WriteLineAsync('='.Repeat(62));
-            await _writer.WriteLineAsync($"Guild: {Context.Request.Guild.Name}");
-            await _writer.WriteLineAsync($"Channel: {Context.Request.Channel.Category.Name} / {Context.Request.Channel.Name}");
+            cancellationToken.ThrowIfCancellationRequested();
 
-            if (!string.IsNullOrWhiteSpace(Context.Request.Channel.Topic))
-                await _writer.WriteLineAsync($"Topic: {Context.Request.Channel.Topic}");
-
-            if (Context.Request.After is not null)
-                await _writer.WriteLineAsync($"After: {Context.FormatDate(Context.Request.After.Value.ToDate())}");
-
-            if (Context.Request.Before is not null)
-                await _writer.WriteLineAsync($"Before: {Context.FormatDate(Context.Request.Before.Value.ToDate())}");
-
-            await _writer.WriteLineAsync('='.Repeat(62));
-            await _writer.WriteLineAsync();
+            await _writer.WriteLineAsync(
+                await Context.ResolveAssetUrlAsync(sticker.SourceUrl, cancellationToken)
+            );
         }
 
-        public override async ValueTask WriteMessageAsync(Message message)
+        await _writer.WriteLineAsync();
+    }
+
+    private async ValueTask WriteReactionsAsync(
+        IReadOnlyList<Reaction> reactions,
+        CancellationToken cancellationToken = default)
+    {
+        if (!reactions.Any())
+            return;
+
+        await _writer.WriteLineAsync("{Reactions}");
+
+        foreach (var reaction in reactions)
         {
-            await base.WriteMessageAsync(message);
+            cancellationToken.ThrowIfCancellationRequested();
 
-            // Header
-            await WriteMessageHeaderAsync(message);
+            await _writer.WriteAsync(reaction.Emoji.Name);
 
-            // Content
-            if (!string.IsNullOrWhiteSpace(message.Content))
-                await _writer.WriteLineAsync(FormatMarkdown(message.Content));
+            if (reaction.Count > 1)
+            {
+                await _writer.WriteAsync($" ({reaction.Count})");
+            }
 
-            await _writer.WriteLineAsync();
-
-            // Attachments, embeds, reactions
-            await WriteAttachmentsAsync(message.Attachments);
-            await WriteEmbedsAsync(message.Embeds);
-            await WriteReactionsAsync(message.Reactions);
-
-            await _writer.WriteLineAsync();
+            await _writer.WriteAsync(' ');
         }
 
-        public override async ValueTask WritePostambleAsync()
+        await _writer.WriteLineAsync();
+    }
+
+    public override async ValueTask WritePreambleAsync(CancellationToken cancellationToken = default)
+    {
+        await _writer.WriteLineAsync(new string('=', 62));
+        await _writer.WriteLineAsync($"Guild: {Context.Request.Guild.Name}");
+        await _writer.WriteLineAsync($"Channel: {Context.Request.Channel.Category.Name} / {Context.Request.Channel.Name}");
+
+        if (!string.IsNullOrWhiteSpace(Context.Request.Channel.Topic))
         {
-            await _writer.WriteLineAsync('='.Repeat(62));
-            await _writer.WriteLineAsync($"Exported {MessagesWritten:N0} message(s)");
-            await _writer.WriteLineAsync('='.Repeat(62));
+            await _writer.WriteLineAsync($"Topic: {Context.Request.Channel.Topic}");
         }
 
-        public override async ValueTask DisposeAsync()
+        if (Context.Request.After is not null)
         {
-            await _writer.DisposeAsync();
-            await base.DisposeAsync();
+            await _writer.WriteLineAsync($"After: {Context.FormatDate(Context.Request.After.Value.ToDate())}");
         }
+
+        if (Context.Request.Before is not null)
+        {
+            await _writer.WriteLineAsync($"Before: {Context.FormatDate(Context.Request.Before.Value.ToDate())}");
+        }
+
+        await _writer.WriteLineAsync(new string('=', 62));
+        await _writer.WriteLineAsync();
+    }
+
+    public override async ValueTask WriteMessageAsync(
+        Message message,
+        CancellationToken cancellationToken = default)
+    {
+        await base.WriteMessageAsync(message, cancellationToken);
+
+        // Header
+        await WriteMessageHeaderAsync(message);
+
+        // Content
+        if (!string.IsNullOrWhiteSpace(message.Content))
+        {
+            await _writer.WriteLineAsync(
+                await FormatMarkdownAsync(message.Content, cancellationToken)
+            );
+        }
+
+        await _writer.WriteLineAsync();
+
+        // Attachments, embeds, reactions, etc.
+        await WriteAttachmentsAsync(message.Attachments, cancellationToken);
+        await WriteEmbedsAsync(message.Embeds, cancellationToken);
+        await WriteStickersAsync(message.Stickers, cancellationToken);
+        await WriteReactionsAsync(message.Reactions, cancellationToken);
+
+        await _writer.WriteLineAsync();
+    }
+
+    public override async ValueTask WritePostambleAsync(CancellationToken cancellationToken = default)
+    {
+        await _writer.WriteLineAsync(new string('=', 62));
+        await _writer.WriteLineAsync($"Exported {MessagesWritten:N0} message(s)");
+        await _writer.WriteLineAsync(new string('=', 62));
+    }
+
+    public override async ValueTask DisposeAsync()
+    {
+        await _writer.DisposeAsync();
+        await base.DisposeAsync();
     }
 }

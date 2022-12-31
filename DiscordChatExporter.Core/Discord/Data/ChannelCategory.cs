@@ -3,43 +3,24 @@ using DiscordChatExporter.Core.Discord.Data.Common;
 using DiscordChatExporter.Core.Utils.Extensions;
 using JsonExtensions.Reading;
 
-namespace DiscordChatExporter.Core.Discord.Data
+namespace DiscordChatExporter.Core.Discord.Data;
+
+public record ChannelCategory(Snowflake Id, string Name, int? Position) : IHasId
 {
-    public partial class ChannelCategory : IHasId
+    public static ChannelCategory Unknown { get; } = new(Snowflake.Zero, "<unknown category>", 0);
+
+    public static ChannelCategory Parse(JsonElement json, int? positionHint = null)
     {
-        public Snowflake Id { get; }
+        var id = json.GetProperty("id").GetNonWhiteSpaceString().Pipe(Snowflake.Parse);
 
-        public string Name { get; }
+        var name =
+            json.GetPropertyOrNull("name")?.GetNonWhiteSpaceStringOrNull() ??
+            id.ToString();
 
-        public int? Position { get; }
+        var position =
+            positionHint ??
+            json.GetPropertyOrNull("position")?.GetInt32OrNull();
 
-        public ChannelCategory(Snowflake id, string name, int? position)
-        {
-            Id = id;
-            Name = name;
-            Position = position;
-        }
-
-        public override string ToString() => Name;
-    }
-
-    public partial class ChannelCategory
-    {
-        public static ChannelCategory Parse(JsonElement json, int? position = null)
-        {
-            var id = json.GetProperty("id").GetString().Pipe(Snowflake.Parse);
-
-            var name =
-                json.GetPropertyOrNull("name")?.GetString() ??
-                id.ToString();
-
-            return new ChannelCategory(
-                id,
-                name,
-                position ?? json.GetPropertyOrNull("position")?.GetInt32()
-            );
-        }
-
-        public static ChannelCategory Empty { get; } = new(Snowflake.Zero, "<unknown category>", 0);
+        return new ChannelCategory(id, name, position);
     }
 }

@@ -5,38 +5,35 @@ using CliFx.Infrastructure;
 using DiscordChatExporter.Cli.Commands.Base;
 using DiscordChatExporter.Core.Discord.Data;
 
-namespace DiscordChatExporter.Cli.Commands
+namespace DiscordChatExporter.Cli.Commands;
+
+[Command("exportall", Description = "Export all accessible channels.")]
+public class ExportAllCommand : ExportCommandBase
 {
-    [Command("exportall", Description = "Export all accessible channels.")]
-    public class ExportAllCommand : ExportCommandBase
+    [CommandOption(
+        "include-dm",
+        Description = "Include direct message channels."
+    )]
+    public bool IncludeDirectMessages { get; init; } = true;
+
+    public override async ValueTask ExecuteAsync(IConsole console)
     {
-        [CommandOption("include-dm", Description = "Include direct message channels.")]
-        public bool IncludeDirectMessages { get; init; } = true;
+        await base.ExecuteAsync(console);
 
-        public override async ValueTask ExecuteAsync(IConsole console)
+        var cancellationToken = console.RegisterCancellationHandler();
+        var channels = new List<Channel>();
+
+        await console.Output.WriteLineAsync("Fetching channels...");
+        await foreach (var guild in Discord.GetUserGuildsAsync(cancellationToken))
         {
-            await base.ExecuteAsync(console);
+            // Skip DMs if instructed to
+            if (!IncludeDirectMessages && guild.Id == Guild.DirectMessages.Id)
+                continue;
 
-            // Get channel metadata
-            await console.Output.WriteLineAsync("Fetching channels...");
-
-            var channels = new List<Channel>();
-
-            // Aggregate channels from all guilds
-            await foreach (var guild in Discord.GetUserGuildsAsync())
-            {
-                // Skip DMs if instructed to
-                if (!IncludeDirectMessages && guild.Id == Guild.DirectMessages.Id)
-                    continue;
-
-                await foreach (var channel in Discord.GetGuildChannelsAsync(guild.Id))
-                {
-                    channels.Add(channel);
-                }
-            }
-
-            // Export
-            await ExportAsync(console, channels);
+            await foreach (var channel in Discord.GetGuildChannelsAsync(guild.Id, cancellationToken))
+                channels.Add(channel);
         }
+
+        await base.ExecuteAsync(console, channels);
     }
 }

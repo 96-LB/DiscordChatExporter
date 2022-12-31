@@ -1,5 +1,11 @@
 blank_issues_enabled: false
 contact_links:
+  - name: ⚠ Feature request
+    url: https://github.com/Tyrrrz/.github/blob/master/docs/project-status.md
+    about: Sorry, but this project is in maintenance mode and no longer accepts new feature requests.
+  - name: 💬 Discord server
+    url: https://discord.gg/2SUWKFnHSm
+    about: Chat with the project community.
   - name: 📖 Wiki
     url: https://github.com/Tyrrrz/DiscordChatExporter/wiki
     about: Find usage guides and frequently asked questions.

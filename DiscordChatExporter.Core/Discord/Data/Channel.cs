@@ -3,103 +3,84 @@ using System.Text.Json;
 using DiscordChatExporter.Core.Discord.Data.Common;
 using DiscordChatExporter.Core.Utils.Extensions;
 using JsonExtensions.Reading;
-using Tyrrrz.Extensions;
 
-namespace DiscordChatExporter.Core.Discord.Data
+namespace DiscordChatExporter.Core.Discord.Data;
+
+// https://discord.com/developers/docs/resources/channel#channel-object
+public partial record Channel(
+    Snowflake Id,
+    ChannelKind Kind,
+    Snowflake GuildId,
+    ChannelCategory Category,
+    string Name,
+    int? Position,
+    int? CategoryPosition,
+    string? Topic,
+    Snowflake? LastMessageId) : IHasId
 {
-    // https://discord.com/developers/docs/resources/channel#channel-object
-    public partial class Channel : IHasId
-    {
-        public Snowflake Id { get; }
+    public bool SupportsVoice => Kind is ChannelKind.GuildVoiceChat or ChannelKind.GuildStageVoice;
+}
 
-        public ChannelType Type { get; }
-
-        public bool IsTextChannel => Type is
-            ChannelType.GuildTextChat or
-            ChannelType.DirectTextChat or
-            ChannelType.DirectGroupTextChat or
-            ChannelType.GuildNews or
-            ChannelType.GuildStore;
-
-        public Snowflake GuildId { get; }
-
-        public ChannelCategory Category { get; }
-
-        public string Name { get; }
-
-        public int? Position { get; }
-
-        public int CategoryPosition { get; }
-
-        public string? Topic { get; }
-
-        public Channel(
-            Snowflake id,
-            ChannelType type,
-            Snowflake guildId,
-            ChannelCategory category,
-            string name,
-            int? position,
-            int categoryPosition,
-            string? topic)
+public partial record Channel
+{
+    private static ChannelCategory GetFallbackCategory(ChannelKind channelKind) => new(
+        Snowflake.Zero,
+        channelKind switch
         {
-            Id = id;
-            Type = type;
-            GuildId = guildId;
-            Category = category;
-            Name = name;
-            Position = position;
-            CategoryPosition = categoryPosition;
-            Topic = topic;
-        }
+            ChannelKind.GuildTextChat => "Text",
+            ChannelKind.DirectTextChat => "Private",
+            ChannelKind.DirectGroupTextChat => "Group",
+            ChannelKind.GuildNews => "News",
+            _ => "Default"
+        },
+        null
+    );
 
-        public override string ToString() => Name;
-    }
-
-    public partial class Channel
+    public static Channel Parse(JsonElement json, ChannelCategory? category = null, int? positionHint = null, int? categoryPositionHint = null)
     {
-        private static ChannelCategory GetFallbackCategory(ChannelType channelType) => new(
-            Snowflake.Zero,
-            channelType switch
-            {
-                ChannelType.GuildTextChat => "Text",
-                ChannelType.DirectTextChat => "Private",
-                ChannelType.DirectGroupTextChat => "Group",
-                ChannelType.GuildNews => "News",
-                ChannelType.GuildStore => "Store",
-                _ => "Default"
-            },
-            null
+        var id = json.GetProperty("id").GetNonWhiteSpaceString().Pipe(Snowflake.Parse);
+        var kind = (ChannelKind)json.GetProperty("type").GetInt32();
+        var guildId = json.GetPropertyOrNull("guild_id")?.GetNonWhiteSpaceStringOrNull()?.Pipe(Snowflake.Parse);
+
+        var name =
+            // Guild channel
+            json.GetPropertyOrNull("name")?.GetNonWhiteSpaceStringOrNull() ??
+
+            // DM channel
+            json.GetPropertyOrNull("recipients")?
+                .EnumerateArrayOrNull()?
+                .Select(User.Parse)
+                .Select(u => u.Name)
+                .Pipe(s => string.Join(", ", s)) ??
+
+            // Fallback
+            id.ToString();
+
+        var position =
+            positionHint ??
+            json.GetPropertyOrNull("position")?.GetInt32OrNull();
+        
+        var categoryPosition =
+            categoryPositionHint ??
+            0;
+        
+        var topic = json.GetPropertyOrNull("topic")?.GetStringOrNull();
+
+        var lastMessageId = json
+            .GetPropertyOrNull("last_message_id")?
+            .GetNonWhiteSpaceStringOrNull()?
+            .Pipe(Snowflake.Parse);
+
+        return new Channel(
+            id,
+            kind,
+            guildId ?? Guild.DirectMessages.Id,
+            category ?? GetFallbackCategory(kind),
+            name,
+            position,
+            categoryPosition,
+            topic,
+            lastMessageId
         );
-
-        public static Channel Parse(JsonElement json, ChannelCategory? category = null, int? position = null, int? categoryPosition = null)
-        {
-            var id = json.GetProperty("id").GetString().Pipe(Snowflake.Parse);
-            var guildId = json.GetPropertyOrNull("guild_id")?.GetString().Pipe(Snowflake.Parse);
-            var topic = json.GetPropertyOrNull("topic")?.GetString();
-            var type = (ChannelType) json.GetProperty("type").GetInt32();
-
-            var name =
-                // Guild channel
-                json.GetPropertyOrNull("name")?.GetString() ??
-                // DM channel
-                json.GetPropertyOrNull("recipients")?.EnumerateArray().Select(User.Parse).Select(u => u.Name).JoinToString(", ") ??
-                // Fallback
-                id.ToString();
-
-            position ??= json.GetPropertyOrNull("position")?.GetInt32();
-            categoryPosition ??= 0;
-
-            return new Channel(
-                id,
-                type,
-                guildId ?? Guild.DirectMessages.Id,
-                category ?? GetFallbackCategory(type),
-                name,
-                position,
-                categoryPosition.Value,
-                topic
-            );
-        }
     }
 }

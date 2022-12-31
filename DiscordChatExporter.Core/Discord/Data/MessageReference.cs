@@ -2,36 +2,28 @@ using System.Text.Json;
 using DiscordChatExporter.Core.Utils.Extensions;
 using JsonExtensions.Reading;
 
-namespace DiscordChatExporter.Core.Discord.Data
+namespace DiscordChatExporter.Core.Discord.Data;
+
+// https://discord.com/developers/docs/resources/channel#message-object-message-reference-structure
+public record MessageReference(Snowflake? MessageId, Snowflake? ChannelId, Snowflake? GuildId)
 {
-    // https://discord.com/developers/docs/resources/channel#message-object-message-reference-structure
-    public partial class MessageReference
+    public static MessageReference Parse(JsonElement json)
     {
-        public Snowflake? MessageId { get; }
+        var messageId = json
+            .GetPropertyOrNull("message_id")?
+            .GetNonWhiteSpaceStringOrNull()?
+            .Pipe(Snowflake.Parse);
 
-        public Snowflake? ChannelId { get; }
+        var channelId = json
+            .GetPropertyOrNull("channel_id")?
+            .GetNonWhiteSpaceStringOrNull()?
+            .Pipe(Snowflake.Parse);
 
-        public Snowflake? GuildId { get; }
+        var guildId = json
+            .GetPropertyOrNull("guild_id")?
+            .GetNonWhiteSpaceStringOrNull()?
+            .Pipe(Snowflake.Parse);
 
-        public MessageReference(Snowflake? messageId, Snowflake? channelId, Snowflake? guildId)
-        {
-            MessageId = messageId;
-            ChannelId = channelId;
-            GuildId = guildId;
-        }
-
-        public override string ToString() => MessageId?.ToString() ?? "<unknown reference>";
-    }
-
-    public partial class MessageReference
-    {
-        public static MessageReference Parse(JsonElement json)
-        {
-            var messageId = json.GetPropertyOrNull("message_id")?.GetString().Pipe(Snowflake.Parse);
-            var channelId = json.GetPropertyOrNull("channel_id")?.GetString().Pipe(Snowflake.Parse);
-            var guildId = json.GetPropertyOrNull("guild_id")?.GetString().Pipe(Snowflake.Parse);
-
-            return new MessageReference(messageId, channelId, guildId);
-        }
+        return new MessageReference(messageId, channelId, guildId);
     }
 }

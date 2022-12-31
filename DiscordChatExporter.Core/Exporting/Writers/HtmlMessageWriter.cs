@@ -1,80 +1,146 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using DiscordChatExporter.Core.Discord.Data;
 using DiscordChatExporter.Core.Exporting.Writers.Html;
+using WebMarkupMin.Core;
 
-namespace DiscordChatExporter.Core.Exporting.Writers
+namespace DiscordChatExporter.Core.Exporting.Writers;
+
+internal class HtmlMessageWriter : MessageWriter
 {
-    internal class HtmlMessageWriter : MessageWriter
+    private readonly TextWriter _writer;
+    private readonly string _themeName;
+
+    private readonly HtmlMinifier _minifier = new();
+    private readonly List<Message> _messageGroup = new();
+
+    public HtmlMessageWriter(Stream stream, ExportContext context, string themeName)
+        : base(stream, context)
     {
-        private readonly TextWriter _writer;
-        private readonly string _themeName;
+        _writer = new StreamWriter(stream);
+        _themeName = themeName;
+    }
 
-        private readonly List<Message> _messageGroupBuffer = new();
+    private bool CanJoinGroup(Message message)
+    {
+        // If the group is empty, any message can join it
+        if (_messageGroup.LastOrDefault() is not { } lastMessage)
+            return true;
 
-        public HtmlMessageWriter(Stream stream, ExportContext context, string themeName)
-            : base(stream, context)
+        // Reply messages cannot join existing groups because they need to appear first
+        if (message.Kind == MessageKind.Reply)
+            return false;
+
+        // Grouping for system notifications
+        if (message.Kind.IsSystemNotification())
         {
-            _writer = new StreamWriter(stream);
-            _themeName = themeName;
+            // Can only be grouped with other system notifications
+            if (!lastMessage.Kind.IsSystemNotification())
+                return false;
+        }
+        // Grouping for normal messages
+        else
+        {
+            // Can only be grouped with other normal messages
+            if (lastMessage.Kind.IsSystemNotification())
+                return false;
+
+            // Messages must be within 7 minutes of each other
+            if ((message.Timestamp - lastMessage.Timestamp).Duration().TotalMinutes > 7)
+                return false;
+
+            // Messages must be from the same author
+            if (message.Author.Id != lastMessage.Author.Id)
+                return false;
+
+            // If the user changed their name after the last message, their new messages
+            // cannot join an existing group.
+            if (!string.Equals(message.Author.FullName, lastMessage.Author.FullName, StringComparison.Ordinal))
+                return false;
         }
 
-        public override async ValueTask WritePreambleAsync()
+        return true;
+    }
+
+    // Use <!--wmm:ignore--> to preserve blocks of code inside the templates
+    private string Minify(string html) => _minifier
+        .Minify(html, false)
+        .MinifiedContent;
+
+    public override async ValueTask WritePreambleAsync(
+        CancellationToken cancellationToken = default)
+    {
+        await _writer.WriteLineAsync(
+            Minify(
+                await new PreambleTemplate
+                {
+                    ExportContext = Context,
+                    ThemeName = _themeName
+                }.RenderAsync(cancellationToken)
+            )
+        );
+    }
+
+    private async ValueTask WriteMessageGroupAsync(
+        IReadOnlyList<Message> messages,
+        CancellationToken cancellationToken = default)
+    {
+        await _writer.WriteLineAsync(
+            Minify(
+                await new MessageGroupTemplate
+                {
+                    ExportContext = Context,
+                    Messages = messages
+                }.RenderAsync(cancellationToken)
+            )
+        );
+    }
+
+    public override async ValueTask WriteMessageAsync(
+        Message message,
+        CancellationToken cancellationToken = default)
+    {
+        await base.WriteMessageAsync(message, cancellationToken);
+
+        // If the message can be grouped, buffer it for now
+        if (CanJoinGroup(message))
         {
-            var templateContext = new PreambleTemplateContext(Context, _themeName);
-
-            await _writer.WriteLineAsync(
-                await PreambleTemplate.RenderAsync(templateContext)
-            );
+            _messageGroup.Add(message);
         }
-
-        private async ValueTask WriteMessageGroupAsync(MessageGroup messageGroup)
+        // Otherwise, flush the group and render messages
+        else
         {
-            var templateContext = new MessageGroupTemplateContext(Context, messageGroup);
+            await WriteMessageGroupAsync(_messageGroup, cancellationToken);
 
-            await _writer.WriteLineAsync(
-                await MessageGroupTemplate.RenderAsync(templateContext)
-            );
+            _messageGroup.Clear();
+            _messageGroup.Add(message);
         }
+    }
 
-        public override async ValueTask WriteMessageAsync(Message message)
-        {
-            await base.WriteMessageAsync(message);
+    public override async ValueTask WritePostambleAsync(CancellationToken cancellationToken = default)
+    {
+        // Flush current message group
+        if (_messageGroup.Any())
+            await WriteMessageGroupAsync(_messageGroup, cancellationToken);
 
-            // If message group is empty or the given message can be grouped, buffer the given message
-            if (!_messageGroupBuffer.Any() || MessageGroup.CanJoin(_messageGroupBuffer.Last(), message))
-            {
-                _messageGroupBuffer.Add(message);
-            }
-            // Otherwise, flush the group and render messages
-            else
-            {
-                await WriteMessageGroupAsync(MessageGroup.Join(_messageGroupBuffer));
+        await _writer.WriteLineAsync(
+            Minify(
+                await new PostambleTemplate
+                {
+                    ExportContext = Context,
+                    MessagesWritten = MessagesWritten
+                }.RenderAsync(cancellationToken)
+            )
+        );
+    }
 
-                _messageGroupBuffer.Clear();
-                _messageGroupBuffer.Add(message);
-            }
-        }
-
-        public override async ValueTask WritePostambleAsync()
-        {
-            // Flush current message group
-            if (_messageGroupBuffer.Any())
-                await WriteMessageGroupAsync(MessageGroup.Join(_messageGroupBuffer));
-
-            var templateContext = new PostambleTemplateContext(Context, MessagesWritten);
-
-            await _writer.WriteLineAsync(
-                await PostambleTemplate.RenderAsync(templateContext)
-            );
-        }
-
-        public override async ValueTask DisposeAsync()
-        {
-            await _writer.DisposeAsync();
-            await base.DisposeAsync();
-        }
+    public override async ValueTask DisposeAsync()
+    {
+        await _writer.DisposeAsync();
+        await base.DisposeAsync();
     }
 }

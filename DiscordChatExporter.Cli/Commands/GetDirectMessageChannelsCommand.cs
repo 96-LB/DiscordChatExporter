@@ -7,30 +7,35 @@ using DiscordChatExporter.Cli.Commands.Base;
 using DiscordChatExporter.Core.Discord.Data;
 using DiscordChatExporter.Core.Utils.Extensions;
 
-namespace DiscordChatExporter.Cli.Commands
+namespace DiscordChatExporter.Cli.Commands;
+
+[Command("dm", Description = "Get the list of direct message channels.")]
+public class GetDirectMessageChannelsCommand : TokenCommandBase
 {
-    [Command("dm", Description = "Get the list of direct message channels.")]
-    public class GetDirectMessageChannelsCommand : TokenCommandBase
+    public override async ValueTask ExecuteAsync(IConsole console)
     {
-        public override async ValueTask ExecuteAsync(IConsole console)
+        var cancellationToken = console.RegisterCancellationHandler();
+
+        var channels = (await Discord.GetGuildChannelsAsync(Guild.DirectMessages.Id, cancellationToken))
+            .Where(c => c.Kind != ChannelKind.GuildCategory)
+            .OrderByDescending(c => c.LastMessageId)
+            .ThenBy(c => c.Name)
+            .ToArray();
+
+        foreach (var channel in channels)
         {
-            var channels = await Discord.GetGuildChannelsAsync(Guild.DirectMessages.Id);
+            // Channel ID
+            await console.Output.WriteAsync(
+                channel.Id.ToString().PadRight(18, ' ')
+            );
 
-            foreach (var channel in channels.OrderBy(c => c.Name))
-            {
-                // Channel ID
-                await console.Output.WriteAsync(channel.Id.ToString());
+            // Separator
+            using (console.WithForegroundColor(ConsoleColor.DarkGray))
+                await console.Output.WriteAsync(" | ");
 
-                // Separator
-                using (console.WithForegroundColor(ConsoleColor.DarkGray))
-                    await console.Output.WriteAsync(" | ");
-
-                // Channel category / name
-                using (console.WithForegroundColor(ConsoleColor.White))
-                    await console.Output.WriteAsync($"{channel.Category} / {channel.Name}");
-
-                await console.Output.WriteLineAsync();
-            }
+            // Channel category / name
+            using (console.WithForegroundColor(ConsoleColor.White))
+                await console.Output.WriteLineAsync($"{channel.Category.Name} / {channel.Name}");
         }
     }
 }

@@ -1,9 +1,163 @@
+### v2.36.4 (29-Oct-2022)
+
+- Changed all mentions of "media" in the context of "download media" or "reuse media" to "assets". CLI options will retain their existing names for backwards compatibility.
+- [HTML] Fixed an issue which prevented emoji used inside message content from being downloaded when "download assets" option is enabled. (Thanks [@Roberto Blázquez](https://github.com/xBaank))
+
+### v2.36.3 (21-Oct-2022)
+
+- [GUI] Fixed an issue where opening a dialog did not prevent user interactions with background UI elements using keyboard. This sometimes caused the application to crash in weird ways.
+- [Docker] Fixed an issue where DiscordChatExporter was running as root inside the container, making the exported files inaccessible to the host. (Thanks [@Benjamin Just](https://github.com/BamButz))
+
+### v2.36.2 (08-Oct-2022)
+
+- Removed the message content intent check because the heuristics turned out to be not reliable enough.
+- Fixed an issue where the runtime manifest included the wrong target runtime version. This resulted in the application failing to launch for some users when upgrading from earlier versions.
+
+### v2.36.1 (24-Sep-2022)
+
+- Added a check which will trigger an error if the provided bot account does not have the message content intent enabled. Note, however, that this check is based on heuristics which may result in false negatives.
+- Fixed an issue where certain transient HTTP errors were not retried.
+- Fixed an issue which caused the export process to fail with the `IndexOutOfRangeException` exception on certain automated messages.
+- Fixed an issue which caused the export process to fail on unrecognized embed types.
+
+### v2.36 (16-Sep-2022)
+
+- [HTML] Added support for rendering GIFV embeds. They will now render as videos that automatically play when you hover your mouse over them. (Thanks [@gan-of-culture](https://github.com/gan-of-culture))
+- [HTML] Added support for rendering system notification messages, such as when a user joins a server or when a messages gets pinned. Previously, such messages were rendered as regular text messages, but now they look similar to how they're presented in the Discord client. (Thanks [@gan-of-culture](https://github.com/gan-of-culture))
+- [CLI] Improved the wording of the error message that's shown when exporting multiple channels and the provided output path is ambiguous. It now mentions that you can resolve the ambiguity by adding a slash at the end of the path.
+
+### v2.35.2 (08-Sep-2022)
+
+- Updated usage guide to mention the need to enable "Message Content Intent" to use a bot as a medium for exporting messages.
+- [CLI] Fixed an issue where passing an existing directory as the output path failed when exporting multiple channels (for example, when running `exportdm`). An ambiguous output path will now always be treated as a directory path if that directory already exists. If it doesn't exist, it will be treated as a file path, matching the previous behavior.
+
+### v2.35.1 (26-Aug-2022)
+
+- Added `~` character as an alias for `-` when negating a message filter. This should make it easier to use negated filters from CLI where the dash character already has other meanings.
+- Extended retry logic to encompass all server-side errors from Discord API, instead of only `500 Internal Server Error`.
+- [CLI] Attempt to export multiple channels will now fail if provided with an output path that is neither a directory, nor a file name template. Previously, this resulted in all channels being exported to the same file, overwriting each other.
+- Fixed an issue where a text message filter didn't work if it started with a character that's also the first character in one of the named filters (e.g. `from` or `mentions`).
+- Fixed an issue where a text message filter didn't work correctly if it was enclosed in parentheses.
+- Fixed an issue where categories were displayed alongside regular channels in the channel list, both in GUI and in CLI (when using the `guild` command).
+- [CLI] Fixed an issue where an output path starting with a tilde on Linux was not expanded properly into a full path. (Thanks [@TSRBerry](https://github.com/TSRBerry))
+
+### v2.35 (02-Jul-2022)
+
+- Added support for exporting text chat in voice channels. These channels are now also displayed when browsing in the GUI and in the CLI when executing the `channels` command.
+- [GUI] Direct message channels are now sorted by the timestamp of their last message, similarly to how they appear in the Discord client.
+- [GUI] Removed artificial grouping of direct message channels into "Private" and "Group".
+- [CLI] Added runtime bootstrapper capabilities to the CLI flavor of DiscordChatExporter on Windows. Now, if you attempt to run the application without the required prerequisites installed, you will be provided with an option to install them automatically.
+- [CLI] Fixed outdated information in the usage guide. (Thanks [@Clint Herron](https://github.com/HanClinto))
+- [CLI] Added whitespace padding to the output of `guilds`, `channels`, and `dm` to make the tables look more uniform.
+- [HTML] Added hyperlinks to message timestamps, which allows you to quickly copy a link to a specific message in the export. (Thanks [@Philipp C. Heckel](https://github.com/binwiederhier))
+- [HTML] Added minification. Chat exports in HTML format are now 30-35% smaller than before.
+- [HTML] Added support for rendering embeds of Twitter posts that contain multiple images. Previously, this resulted in multiple separate embeds instead of one.
+- [HTML] Added support for rendering embeds of YouTube Shorts videos.
+- [HTML] Text content is now hidden if the message only contains a link to an image and nothing else. The link itself is resolved as an image embed.
+- [HTML] Fixed an issue where some emoji that included a zero-width-joiner rune were not rendered correctly due to a wrong Twemoji URL being generated. (Thanks [@Ethan](https://github.com/ethanndickson))
+- [HTML] Fixed an issue where replies to a message that contained a quote (i.e. `>`) were not rendered correctly.
+- [HTML] Fixed an issue where code blocks with language highlighting did not have the correct background color.
+- Added file name template token that resolves to the current date (`%d`). (Thanks [@Lucas LaBuff](https://github.com/96-LB))
+- Updated the usage guide to replace the instructions for retrieving the user token with those that appear to work for more people.
+- Updated the usage guide to feature the TOS warning more prominently.
+- [Docker] Changed internal working directory from `/app/out` to `/out`. This was an unintended breaking change. Please update your volume binding configuration from `-v /path/on/machine:/app/out` to `-v /path/on/machine:/out`.
+
+### v2.34.1 (01-Jun-2022)
+
+- Improved retry policy to handle more transient errors. This should result in fewer errors exporting a channel due to timeout.
+- Added `has:pin` message filter. You can use it to limit exported messages to those that have been pinned. (Thanks [@Andrew Kolos](https://github.com/andrewkolos))
+- Fixed an issue which caused the export to fail when processing stickers that have no name.
+
+### v2.34 (10-Apr-2022)
+
+- [HTML] Reworked layout to be more consistent with Discord.
+- [HTML] Changed user profile picture dimensions from `128x128` to `512x512`. (Thanks [@Chris Helder](https://github.com/TheDude53))
+- [HTML] Improved image scaling for Chromium-based browsers. This should result in higher quality images across the entire export.
+- [HTML] Hovering over messages will now show short timestamps on the left, indicating the time that the individual messages of the group were sent.
+- [HTML] Using "download media" option will now also download scripts, styles, fonts, and other similar resources used by the export.
+- [HTML] Image attachments will now use the provided description as alt text.
+- [HTML] Fixed a few layout inconsistencies related to embeds.
+- [GUI] Added a few clickable links to the usage guide to make the process of locating tokens easier.
+
+### v2.33.2 (07-Mar-2022)
+
+- Actually fixed it this time.
+
+### v2.33.1 (07-Mar-2022)
+
+- Fixed an issue where the application silently failed to run if the system didn't have .NET Runtime 6.0.2 installed. If you continue seeing this issue, please uninstall all existing .NET runtimes from your computer and then try running the application again.
+
+### v2.33 (06-Mar-2022)
+
+- Added messages informing about war in Ukraine and available ways to help.
+- Added support for rendering stickers in HTML and JSON. Lottie-based stickers currently cannot be displayed in HTML exports (see [#803](https://github.com/Tyrrrz/DiscordChatExporter/issues/803)).
+- Added a new `reaction:` message filter which can be used to check if someone reacted to a message with a specific emoji. You can either pass the emoji name (e.g. `reaction:LUL`) or its ID (e.g. `reaction:41771983429993937`).
+- [GUI] Added auto-detection for dark mode. If your system is configured to prefer dark mode in applications, DiscordChatExporter will use it by default instead of light mode.
+- Fixed an issue which caused the export process to crash when downloading media files with extremely long file extensions. (Thanks [@Tomlacko](https://github.com/Tomlacko))
+- Fixed an issue which caused the export process to crash on invalid mentions.
+- [GUI] Fixed an issue where the time pickers used to specify export ranges always displayed time in 12-hour format, instead of respecting the system locale.
+
+### v2.32 (27-Jan-2022)
+
+- Token kind (user or bot) is now detected automatically. Removed the button to switch token kind in GUI. Option `-b|--bot` in CLI is now deprecated and does nothing.
+- Updated user token extraction guide to reflect the fact that devtools are no longer accessible in the desktop version of Discord client. The recommended workaround is to open Discord in browser. (Thanks [@Dhananjay-JSR](https://github.com/Dhananjay-JSR))
+- Fixed an issue which caused an error when parsing invalid date timestamps. Such timestamps are now rendered as "Invalid date", similarly to how the Discord client does it.
+- Fixed an issue which caused an error when parsing certain embed fields.
+- Fixed an issue which caused an error when parsing a mention to a user that has no username.
+- [GUI] Minor visual fixes.
+
+### v2.31.1 (15-Dec-2021)
+
+- Fixed an issue which caused an error when parsing certain custom emoji reactions.
+- [GUI] Improved user interface.
+
+### v2.31 (06-Dec-2021)
+
+- Changed target runtime of the application (both GUI and CLI) from .NET 3.1 to .NET 6. Those using the GUI version will not need to take any action as the application should install the necessary prerequisites automatically. Those using the CLI version will need to download and install .NET 6 runtime manually [from here](https://dotnet.microsoft.com/download/dotnet/6.0) (look for ".NET Runtime 6.0.x" section on the right and choose the distribution appropriate for your system).
+- [HTML] Updated layout design to match Discord more closely. (Thanks [@Artem](https://github.com/Scarg))
+- [HTML] Fixed an issue where markdown inside channel topic was not rendered correctly. (Thanks [@Emily](https://github.com/emillly-b))
+- [HTML] Fixed an issue where the layout was broken for messages containing text in right-to-left languages. (Thanks [@Emily](https://github.com/emillly-b))
+- Fixed an issue where text filters weren't matching content inside of embeds.
+- [GUI] Fixed a multitude of issues related to the bootstrapper.
+
+### v2.30.1 (28-Aug-2021)
+
+- [HTML] Changed user avatars to render using higher resolution images. (Thanks [@Chris Helder](https://github.com/TheDude53))
+- Fixed an issue where `has:file` message filter was not recognized. (Thanks [@Lucas LaBuff](https://github.com/96-LB))
+- Fixed an issue where a unix timestamp marker with an invalid offset crashed the export process.
+
+### v2.30 (08-Aug-2021)
+
+- [HTML] Added special casing for Spotify track embeds to render them directly using an embedded player.
+- [HTML] Added special casing for plain image embeds to render them like image attachments.
+- [HTML] Added tooltip text for unix timestamp markers which shows the full date represented by the timestamp, regardless of configured date format.
+- [HTML] Updated the fallback text shown when the referenced message could not be loaded to make it more explicit.
+- [HTML] Updated styling of quoted text in markdown to more closely resemble how it looks in Discord.
+- [HTML] Fixed an issue where some file formats were not correctly recognized as image or video attachments, which affected how they were rendered.
+- [HTML] Fixed an issue where formatting inside named links (e.g. `[**Bold link**](https://example.com)`) was not being parsed.
+- [HTML] Fixed an issue where inline embed fields were missing horizontal spacing between columns.
+- [HTML] Fixed other minor styling issues.
+
+### v2.29 (19-Jul-2021)
+
+- Added support for message filtering, which is accessible as an additional export parameter in the GUI and as the `--filter` option in the CLI. Message filters use a special syntax similar to Discord's search query syntax to allow specifying which messages should be included in the export. For example, you can limit the export to only include messages that contain image attachments (`has:image`) or messages from a certain user (`from:Tyrrrz`) or messages containing certain words (`hello world`), etc. You can also combine filters together (`hi mentions:Tyrrrz`, `from:Tyrrrz | from:96-LB`, `(mentions:Tyrrrz | from:Tyrrrz) has:image`) or negate them (`-has:link`). More thorough documentation coming soon. (Thanks [@Lucas LaBuff](https://github.com/96-LB))
+- Added support for rendering mentions of voice channels, in addition to text channels.
+- Added support for rendering unix timestamp markers. Currently, style markers are ignored and timestamps are always rendered with the format configured in settings (or provided via `--date-format` option).
+- Updated in-app instructions for obtaining a user token. (Thanks [@Yudi](https://github.com/Yudi) and [@virtuallyvlad](https://github.com/virtuallyvlad))
+- [HTML] Improved visual appearance of the reference symbol (Г-shaped line in replies) to make it more closely resemble Discord's styling.
+- [HTML] Added more specific fallback text used when rendering referenced messages that contain no text content but have attachments or embeds.
+- [HTML] Fixed an issue where a broken embed author icon occupied visual space, ruining the embed layout. (Thanks [@Cliff J.](https://github.com/CliffJameston))
+- [GUI] Improved handling for fatal errors that may occur when attempting to export a channel. These errors are now displayed in a popup, allowing the user to try again instead of having the application crash completely.
+- [CLI] Fixed an issue where an attempt to export a channel resulted in `NotSupportedException` when the default encoding was set to `UTF8`.
+- [CLI] Fixed an issue where providing an incorrectly formatted partition limit via `-p|--partition` option resulted in a non-descriptive and unhelpful error.
+- Improved "Requested resource does not exist" error message by including the ID of the requested resource.
+
 ### v2.28 (19-Jun-2021)
 
 - [HTML] Added special casing for YouTube video embeds to render them directly using an embedded player. (Thanks [@quentinmay](https://github.com/quentinmay))
 - [HTML] Added support for rendering standard emoji by code. Such emoji may sometimes be found in messages sent by bots or through webhooks. (Thanks [@CanePlayz](https://github.com/CanePlayz) and [@Lucas LaBuff](https://github.com/96-LB))
 - [HTML] Changed tooltips on standard emoji to show emoji code instead of their raw string representations. (Thanks [@CanePlayz](https://github.com/CanePlayz) and [@Lucas LaBuff](https://github.com/96-LB))
-- [HTML] Added tooltips on individual messages to show when those messages were sent. 
+- [HTML] Added tooltips on individual messages to show when those messages were sent.
 - [HTML] Updated colors and minor styling elements to match Discord's new style direction after rebranding.
 - [HTML] Updated Twemoji URLs to use SVG image variants for better rendering quality.
 - [HTML] Changed user avatar URLs to include predetermined size query parameter for better rendering quality.
@@ -99,7 +253,7 @@
 - Added a new option that enables self-contained exports for all output formats. You can turn it on in the export setup dialog in GUI or using the `--media` option in CLI. When using this, the application will additionally download any media content directly referenced from the exported file instead of linking back to Discord CDN. The files which are downloaded include: guild icons, user avatars, attachments, embedded images, reaction emoji. Note that only files which are actually referenced by the export are downloaded, which means that, for example, user avatars will not be downloaded when using plain text export format. This option is not meant to enable complete offline viewing for HTML exports, but rather to make it easier to archive media content that may eventually get deleted from Discord servers. Also keep in mind that this option may make the export drastically slower and the total file size larger.
 - Changed "discordapp.com" to "discord.com" where applicable as Discord is migrating to a new domain. CDN will remain on "cdn.discordapp.com" for the foreseeable future.
 
-Note that all existing and current HTML exports will likely not render accurately because Discord enabled CORS for their font resources, which prevents them from loading locally. Please refer to [issue #322](https://github.com/Tyrrrz/DiscordChatExporter/issues/322) for discussion on this topic. 
+Note that all existing and current HTML exports will likely not render accurately because Discord enabled CORS for their font resources, which prevents them from loading locally. Please refer to [issue #322](https://github.com/Tyrrrz/DiscordChatExporter/issues/322) for discussion on this topic.
 
 ### v2.20 (27-Apr-2020)
 

@@ -1,16 +1,12 @@
 ﻿using System.Collections.Generic;
 
-namespace DiscordChatExporter.Core.Discord.Data.Common
+namespace DiscordChatExporter.Core.Discord.Data.Common;
+
+public class IdBasedEqualityComparer : IEqualityComparer<IHasId>
 {
-    public partial class IdBasedEqualityComparer : IEqualityComparer<IHasId>
-    {
-        public bool Equals(IHasId? x, IHasId? y) => x?.Id == y?.Id;
+    public static IdBasedEqualityComparer Instance { get; } = new();
 
-        public int GetHashCode(IHasId obj) => obj.Id.GetHashCode();
-    }
+    public bool Equals(IHasId? x, IHasId? y) => x?.Id == y?.Id;
 
-    public partial class IdBasedEqualityComparer
-    {
-        public static IdBasedEqualityComparer Instance { get; } = new();
-    }
+    public int GetHashCode(IHasId obj) => obj.Id.GetHashCode();
 }

@@ -1,41 +1,57 @@
-﻿using DiscordChatExporter.Core.Discord;
-using DiscordChatExporter.Core.Exporting;
-using DiscordChatExporter.Core.Exporting.Partitioning;
+﻿using DiscordChatExporter.Core.Exporting;
+using Microsoft.Win32;
 using Tyrrrz.Settings;
 
-namespace DiscordChatExporter.Gui.Services
+namespace DiscordChatExporter.Gui.Services;
+
+public partial class SettingsService : SettingsManager
 {
-    public class SettingsService : SettingsManager
+    public bool IsAutoUpdateEnabled { get; set; } = true;
+
+    public bool IsDarkModeEnabled { get; set; } = IsDarkModeEnabledByDefault();
+
+    public bool IsTokenPersisted { get; set; } = true;
+
+    public string DateFormat { get; set; } = "dd-MMM-yy hh:mm tt";
+
+    public int ParallelLimit { get; set; } = 1;
+
+    public bool ShouldReuseAssets { get; set; }
+
+    public string? LastToken { get; set; }
+
+    public ExportFormat LastExportFormat { get; set; } = ExportFormat.HtmlDark;
+
+    public string? LastPartitionLimitValue { get; set; }
+
+    public string? LastMessageFilterValue { get; set; }
+
+    public bool LastShouldDownloadAssets { get; set; }
+
+    public SettingsService()
     {
-        public bool IsAutoUpdateEnabled { get; set; } = true;
+        Configuration.StorageSpace = StorageSpace.Instance;
+        Configuration.SubDirectoryPath = "";
+        Configuration.FileName = "Settings.dat";
+    }
 
-        public bool IsDarkModeEnabled { get; set; }
+    public bool ShouldSerializeLastToken() => IsTokenPersisted;
+}
 
-        public bool IsTokenPersisted { get; set; } = true;
-
-        public string DateFormat { get; set; } = "dd-MMM-yy hh:mm tt";
-
-        public int ParallelLimit { get; set; } = 1;
-
-        public bool ShouldReuseMedia { get; set; }
-
-        public AuthToken? LastToken { get; set; }
-
-        public ExportFormat LastExportFormat { get; set; } = ExportFormat.HtmlDark;
-
-        public string? LastPartitionLimitValue { get; set; }
-
-        public string? LastMessageFilterValue { get; set; }
-
-        public bool LastShouldDownloadMedia { get; set; }
-
-        public SettingsService()
+public partial class SettingsService
+{
+    private static bool IsDarkModeEnabledByDefault()
+    {
+        try
         {
-            Configuration.StorageSpace = StorageSpace.Instance;
-            Configuration.SubDirectoryPath = "";
-            Configuration.FileName = "Settings.dat";
+            return Registry.CurrentUser.OpenSubKey(
+                "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+                false
+            )?.GetValue("AppsUseLightTheme") is 0;
         }
-
-        public bool ShouldSerializeLastToken() => IsTokenPersisted;
+        catch
+        {
+            return false;
+        }
     }
 }

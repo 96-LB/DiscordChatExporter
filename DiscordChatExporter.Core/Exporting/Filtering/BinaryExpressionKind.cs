@@ -1,8 +1,7 @@
-﻿namespace DiscordChatExporter.Core.Exporting.Filtering
+namespace DiscordChatExporter.Core.Exporting.Filtering;
+
+internal enum BinaryExpressionKind
 {
-    public enum BinaryExpressionKind
-    {
-        Or,
-        And
-    }
+    Or,
+    And
 }
