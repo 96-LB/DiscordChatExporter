@@ -14,6 +14,7 @@ public partial record ExportRequest(
     Guild Guild,
     Channel Channel,
     string OutputPath,
+    string? AssetsPath,
     ExportFormat Format,
     Snowflake? After,
     Snowflake? Before,
@@ -35,21 +36,27 @@ public partial record ExportRequest(
 
     public string OutputBaseDirPath => Path.GetDirectoryName(OutputBaseFilePath) ?? OutputPath;
 
-    public string OutputAssetsDirPath => $"{OutputBaseFilePath}_Files{Path.DirectorySeparatorChar}";
+    private string? _outputAssetsDirPath;
+    public string OutputAssetsDirPath => _outputAssetsDirPath ??= GetOutputAssetsDirPath(
+            Guild,
+            Channel,
+            AssetsPath,
+            Format,
+            After,
+            Before
+        ) ?? $"{OutputBaseFilePath}_Files{Path.DirectorySeparatorChar}";
 }
 
 public partial record ExportRequest
 {
-    private static string GetOutputBaseFilePath(
+    private static string FormatPath(
+        string path,
         Guild guild,
         Channel channel,
-        string outputPath,
-        ExportFormat format,
-        Snowflake? after = null,
-        Snowflake? before = null)
+        Snowflake? after,
+        Snowflake? before)
     {
-        // Formats path
-        outputPath = Regex.Replace(outputPath, "%.", m =>
+        return Regex.Replace(path, "%.", m =>
             PathEx.EscapeFileName(m.Value switch
             {
                 "%g" => guild.Id.ToString(),
@@ -66,8 +73,18 @@ public partial record ExportRequest
                 "%d" => DateTimeOffset.Now.ToString("yyyy-MM-dd"),
                 "%%" => "%",
                 _ => m.Value
-            })
-        );
+            }));
+    }
+
+    private static string GetOutputBaseFilePath(
+        Guild guild,
+        Channel channel,
+        string outputPath,
+        ExportFormat format,
+        Snowflake? after = null,
+        Snowflake? before = null)
+    {
+        outputPath = FormatPath(outputPath, guild, channel, after, before);
 
         // Output is a directory
         if (Directory.Exists(outputPath) || string.IsNullOrWhiteSpace(Path.GetExtension(outputPath)))
@@ -120,5 +137,21 @@ public partial record ExportRequest
         buffer.Append('.').Append(format.GetFileExtension());
 
         return PathEx.EscapeFileName(buffer.ToString());
+    }
+
+    private static string? GetOutputAssetsDirPath(
+        Guild guild,
+        Channel channel,
+        string? assetsPath,
+        ExportFormat format,
+        Snowflake? after = null,
+        Snowflake? before = null)
+    {
+        if (assetsPath is null)
+            return null;
+
+        assetsPath = FormatPath(assetsPath, guild, channel, after, before);
+
+        return assetsPath;
     }
 }
