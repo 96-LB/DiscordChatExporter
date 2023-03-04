@@ -37,7 +37,7 @@ public partial record Channel
         null
     );
 
-    public static Channel Parse(JsonElement json, ChannelCategory? category = null, int? positionHint = null, int? categoryPositionHint = null)
+    public static Channel Parse(JsonElement json, ChannelCategory? categoryHint = null, int? positionHint = null, int? categoryPositionHint = null)
     {
         var id = json.GetProperty("id").GetNonWhiteSpaceString().Pipe(Snowflake.Parse);
         var kind = (ChannelKind)json.GetProperty("type").GetInt32();
