@@ -21,7 +21,7 @@ namespace DiscordChatExporter.Core.Discord;
 public class DiscordClient
 {
     private readonly string _token;
-    private readonly Uri _baseUri = new("https://discord.com/api/v9/", UriKind.Absolute);
+    private readonly Uri _baseUri = new("https://discord.com/api/v10/", UriKind.Absolute);
 
     private TokenKind? _resolvedTokenKind;
 
@@ -66,7 +66,8 @@ public class DiscordClient
             var resetAfterDelay = response
                 .Headers
                 .TryGetValue("X-RateLimit-Reset-After")?
-                .Pipe(s => TimeSpan.FromSeconds(double.Parse(s, CultureInfo.InvariantCulture)));
+                .Pipe(s => double.Parse(s, CultureInfo.InvariantCulture))
+                .Pipe(TimeSpan.FromSeconds);
 
             if (remainingRequestCount <= 0 && resetAfterDelay is not null)
             {
@@ -256,16 +257,24 @@ public class DiscordClient
             yield return Role.Parse(roleJson);
     }
 
-    public async ValueTask<Member> GetGuildMemberAsync(
+    public async ValueTask<Member?> TryGetGuildMemberAsync(
         Snowflake guildId,
-        User user,
+        Snowflake memberId,
         CancellationToken cancellationToken = default)
     {
         if (guildId == Guild.DirectMessages.Id)
-            return Member.CreateForUser(user);
+            return null;
 
-        var response = await TryGetJsonResponseAsync($"guilds/{guildId}/members/{user.Id}", cancellationToken);
-        return response?.Pipe(Member.Parse) ?? Member.CreateForUser(user);
+        var response = await TryGetJsonResponseAsync($"guilds/{guildId}/members/{memberId}", cancellationToken);
+        return response?.Pipe(j => Member.Parse(j, guildId));
+    }
+
+    public async ValueTask<Invite?> TryGetGuildInviteAsync(
+        string code,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await TryGetJsonResponseAsync($"invites/{code}", cancellationToken);
+        return response?.Pipe(Invite.Parse);
     }
 
     public async ValueTask<ChannelCategory> GetChannelCategoryAsync(
@@ -281,7 +290,7 @@ public class DiscordClient
         // Instead, we use an empty channel category as a fallback.
         catch (DiscordChatExporterException)
         {
-            return ChannelCategory.Unknown;
+            return new ChannelCategory(channelId, "Unknown Category", 0);
         }
     }
 

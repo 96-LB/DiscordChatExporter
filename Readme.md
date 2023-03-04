@@ -1,6 +1,6 @@
 # DiscordChatExporter
 
-[![Made in Ukraine](https://img.shields.io/badge/made_in-ukraine-ffd700.svg?labelColor=0057b7)](https://vshymanskyy.github.io/StandWithUkraine)
+[![Made in Ukraine](https://img.shields.io/badge/made_in-ukraine-ffd700.svg?labelColor=0057b7)](https://tyrrrz.me/ukraine)
 [![Build](https://img.shields.io/github/actions/workflow/status/Tyrrrz/DiscordChatExporter/main.yml?branch=master)](https://github.com/Tyrrrz/DiscordChatExporter/actions)
 [![Coverage](https://img.shields.io/codecov/c/github/Tyrrrz/DiscordChatExporter/master)](https://codecov.io/gh/Tyrrrz/DiscordChatExporter)
 [![Release](https://img.shields.io/github/release/Tyrrrz/DiscordChatExporter.svg)](https://github.com/Tyrrrz/DiscordChatExporter/releases)
@@ -11,10 +11,10 @@
 
 > 🟡 **Project status**: maintenance mode<sup>[[?]](https://github.com/Tyrrrz/.github/blob/master/docs/project-status.md)</sup>
 
-**DiscordChatExporter** can be used to export message history from a [Discord](https://discord.com) channel to a file.
-It works with direct messages, group messages, and server channels, and supports Discord's dialect of markdown as well as all other rich media features.
+**DiscordChatExporter** is an application that can be used to export message history from any [Discord](https://discord.com) channel to a file.
+It works with direct messages, group messages, and server channels, and supports Discord's dialect of markdown as well as most other rich media features.
 
-> ❔ If you have questions or issues, **please refer to the [wiki](https://github.com/Tyrrrz/DiscordChatExporter/wiki)**.
+> ❔ If you have questions or issues, **please refer to the [docs](https://github.com/Tyrrrz/DiscordChatExporter/blob/master/.docs)**.
 
 > 💬 If you want to chat, **join my [Discord server](https://discord.gg/2SUWKFnHSm)**.
 
@@ -27,11 +27,11 @@ By using this project or its source code, for any purpose and in any shape or fo
 - You **support Ukraine's territorial integrity, including its claims over temporarily occupied territories of Crimea and Donbas**
 - You **reject false narratives perpetuated by Russian state propaganda**
 
-To learn more about the war and how you can help, [click here](https://tyrrrz.me). Glory to Ukraine! 🇺🇦
+To learn more about the war and how you can help, [click here](https://tyrrrz.me/ukraine). Glory to Ukraine! 🇺🇦
 
 ## Download
 
-This application comes in two flavors: graphical user interface (**GUI**) and command line interface (**CLI**).
+This application comes in two flavors: graphical user interface (**GUI**) and command-line interface (**CLI**).
 The following table lists all available download options:
 
 <table>
@@ -84,12 +84,12 @@ The following table lists all available download options:
 > If you have any issues with them, please contact the corresponding maintainers.
 
 > **Warning**:
-> To run **DiscordChatExporter** on macOS and Linux, you need to make sure that **.NET Runtime v6** is installed.
+> To run **DiscordChatExporter** on macOS and Linux, you need to make sure that **.NET 7.0 Runtime** is installed.
 > You can download it here:
 >
-> - [.NET Runtime v6 for **macOS x64**](https://dotnet.microsoft.com/en-us/download/dotnet/thank-you/runtime-6.0.11-macos-x64-installer)
-> - [.NET Runtime v6 for **macOS Arm64**](https://dotnet.microsoft.com/en-us/download/dotnet/thank-you/runtime-6.0.11-macos-arm64-installer)
-> - [.NET Runtime v6 for **Linux**](https://docs.microsoft.com/en-us/dotnet/core/install/linux) (find the correct download for your distro)
+> - [.NET 7.0 Runtime for **macOS x64**](https://dotnet.microsoft.com/en-us/download/dotnet/thank-you/sdk-7.0.101-macos-x64-installer)
+> - [.NET 7.0 Runtime for **macOS Arm64**](https://dotnet.microsoft.com/en-us/download/dotnet/thank-you/sdk-7.0.101-macos-arm64-installer)
+> - [.NET 7.0 Runtime for **Linux**](https://docs.microsoft.com/en-us/dotnet/core/install/linux) (find the correct download for your distro)
 >
 > This should not be necessary if you install **DiscordChatExporter** using a package manager, as it should take care of the dependencies for you.
 > This is also not necessary if you are running **DiscordChatExporter** via Docker, because the image already contains the runtime.
@@ -97,7 +97,7 @@ The following table lists all available download options:
 ## Features
 
 - Graphical user interface (Windows)
-- Command line interface (Windows, Linux, macOS)
+- Command-line interface (Windows, Linux, macOS)
 - Authentication via both user and bot tokens
 - Multiple output formats: HTML (dark/light), TXT, CSV, JSON
 - Support for markdown, attachments, embeds, emoji, and other rich media features

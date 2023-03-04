@@ -10,93 +10,88 @@ using DiscordChatExporter.Core.Utils;
 
 namespace DiscordChatExporter.Core.Exporting;
 
-public partial record ExportRequest(
-    Guild Guild,
-    Channel Channel,
-    string OutputPath,
-    string? AssetsPath,
-    ExportFormat Format,
-    Snowflake? After,
-    Snowflake? Before,
-    PartitionLimit PartitionLimit,
-    MessageFilter MessageFilter,
-    bool ShouldDownloadAssets,
-    bool ShouldReuseAssets,
-    string DateFormat)
+public partial class ExportRequest
 {
-    private string? _outputBaseFilePath;
-    public string OutputBaseFilePath => _outputBaseFilePath ??= GetOutputBaseFilePath(
-        Guild,
-        Channel,
-        OutputPath,
-        Format,
-        After,
-        Before
-    );
+    public Guild Guild { get; }
 
-    public string OutputBaseDirPath => Path.GetDirectoryName(OutputBaseFilePath) ?? OutputPath;
+    public Channel Channel { get; }
 
-    private string? _outputAssetsDirPath;
-    public string OutputAssetsDirPath => _outputAssetsDirPath ??= GetOutputAssetsDirPath(
-            Guild,
-            Channel,
-            AssetsPath,
-            Format,
-            After,
-            Before
-        ) ?? $"{OutputBaseFilePath}_Files{Path.DirectorySeparatorChar}";
-}
+    public string OutputFilePath { get; }
 
-public partial record ExportRequest
-{
-    private static string FormatPath(
-        string path,
-        Guild guild,
-        Channel channel,
-        Snowflake? after,
-        Snowflake? before)
-    {
-        return Regex.Replace(path, "%.", m =>
-            PathEx.EscapeFileName(m.Value switch
-            {
-                "%g" => guild.Id.ToString(),
-                "%G" => guild.Name,
-                "%t" => channel.Category.Id.ToString(),
-                "%T" => channel.Category.Name,
-                "%c" => channel.Id.ToString(),
-                "%C" => channel.Name,
-                "%p" => channel.Position?.ToString() ?? "0",
-                "%P" => channel.Category.Position?.ToString() ?? "0",
-                "%q" => channel.CategoryPosition.ToString() ?? "0",
-                "%a" => after?.ToDate().ToString("yyyy-MM-dd") ?? "",
-                "%b" => before?.ToDate().ToString("yyyy-MM-dd") ?? "",
-                "%d" => DateTimeOffset.Now.ToString("yyyy-MM-dd"),
-                "%%" => "%",
-                _ => m.Value
-            }));
-    }
+    public string OutputDirPath { get; }
 
-    private static string GetOutputBaseFilePath(
+    public string AssetsDirPath { get; }
+
+    public ExportFormat Format { get; }
+
+    public Snowflake? After { get; }
+
+    public Snowflake? Before { get; }
+
+    public PartitionLimit PartitionLimit { get; }
+
+    public MessageFilter MessageFilter { get; }
+
+    public bool ShouldFormatMarkdown { get; }
+
+    public bool ShouldDownloadAssets { get; }
+
+    public bool ShouldReuseAssets { get; }
+
+    public string DateFormat { get; }
+
+    public ExportRequest(
         Guild guild,
         Channel channel,
         string outputPath,
+        string? assetsDirPath,
         ExportFormat format,
-        Snowflake? after = null,
-        Snowflake? before = null)
+        Snowflake? after,
+        Snowflake? before,
+        PartitionLimit partitionLimit,
+        MessageFilter messageFilter,
+        bool shouldFormatMarkdown,
+        bool shouldDownloadAssets,
+        bool shouldReuseAssets,
+        string dateFormat)
     {
-        outputPath = FormatPath(outputPath, guild, channel, after, before);
+        Guild = guild;
+        Channel = channel;
+        Format = format;
+        After = after;
+        Before = before;
+        PartitionLimit = partitionLimit;
+        MessageFilter = messageFilter;
+        ShouldFormatMarkdown = shouldFormatMarkdown;
+        ShouldDownloadAssets = shouldDownloadAssets;
+        ShouldReuseAssets = shouldReuseAssets;
+        DateFormat = dateFormat;
 
-        // Output is a directory
-        if (Directory.Exists(outputPath) || string.IsNullOrWhiteSpace(Path.GetExtension(outputPath)))
-        {
-            var fileName = GetDefaultOutputFileName(guild, channel, format, after, before);
-            return Path.Combine(outputPath, fileName);
-        }
+        OutputFilePath = GetOutputBaseFilePath(
+            Guild,
+            Channel,
+            outputPath,
+            Format,
+            After,
+            Before
+        );
 
-        // Output is a file
-        return outputPath;
+        OutputDirPath = Path.GetDirectoryName(OutputFilePath)!;
+
+        AssetsDirPath = !string.IsNullOrWhiteSpace(assetsDirPath)
+            ? FormatPath(
+                assetsDirPath,
+                Guild,
+                Channel,
+                After,
+                Before
+            )
+            : $"{OutputFilePath}_Files{Path.DirectorySeparatorChar}";
     }
+}
 
+public partial class ExportRequest
+{
     public static string GetDefaultOutputFileName(
         Guild guild,
         Channel channel,
@@ -139,19 +134,54 @@ public partial record ExportRequest
         return PathEx.EscapeFileName(buffer.ToString());
     }
 
-    private static string? GetOutputAssetsDirPath(
+    private static string FormatPath(
+        string path,
         Guild guild,
         Channel channel,
-        string? assetsPath,
+        Snowflake? after,
+        Snowflake? before)
+    {
+        return Regex.Replace(
+            path,
+            "%.",
+            m => PathEx.EscapeFileName(m.Value switch
+            {
+                "%g" => guild.Id.ToString(),
+                "%G" => guild.Name,
+                "%t" => channel.Category.Id.ToString(),
+                "%T" => channel.Category.Name,
+                "%c" => channel.Id.ToString(),
+                "%C" => channel.Name,
+                "%p" => channel.Position?.ToString() ?? "0",
+                "%P" => channel.Category.Position?.ToString() ?? "0",
+                "%q" => channel.CategoryPosition.ToString() ?? "0",
+                "%a" => after?.ToDate().ToString("yyyy-MM-dd") ?? "",
+                "%b" => before?.ToDate().ToString("yyyy-MM-dd") ?? "",
+                "%d" => DateTimeOffset.Now.ToString("yyyy-MM-dd"),
+                "%%" => "%",
+                _ => m.Value
+            })
+        );
+    }
+
+    private static string GetOutputBaseFilePath(
+        Guild guild,
+        Channel channel,
+        string outputPath,
         ExportFormat format,
         Snowflake? after = null,
         Snowflake? before = null)
     {
-        if (assetsPath is null)
-            return null;
+        var actualOutputPath = FormatPath(outputPath, guild, channel, after, before);
 
-        assetsPath = FormatPath(assetsPath, guild, channel, after, before);
+        // Output is a directory
+        if (Directory.Exists(actualOutputPath) || string.IsNullOrWhiteSpace(Path.GetExtension(actualOutputPath)))
+        {
+            var fileName = GetDefaultOutputFileName(guild, channel, format, after, before);
+            return Path.Combine(actualOutputPath, fileName);
+        }
 
-        return assetsPath;
+        // Output is a file
+        return actualOutputPath;
     }
 }

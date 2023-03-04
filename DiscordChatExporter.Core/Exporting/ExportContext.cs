@@ -14,49 +14,71 @@ namespace DiscordChatExporter.Core.Exporting;
 
 internal class ExportContext
 {
+    private readonly Dictionary<Snowflake, Member?> _members = new();
+    private readonly Dictionary<Snowflake, Channel> _channels = new();
+    private readonly Dictionary<Snowflake, Role> _roles = new();
     private readonly ExportAssetDownloader _assetDownloader;
 
+    public DiscordClient Discord { get; }
     public ExportRequest Request { get; }
 
-    public IReadOnlyCollection<Member> Members { get; }
-
-    public IReadOnlyCollection<Channel> Channels { get; }
-
-    public IReadOnlyCollection<Role> Roles { get; }
-
-    public ExportContext(
-        ExportRequest request,
-        IReadOnlyCollection<Member> members,
-        IReadOnlyCollection<Channel> channels,
-        IReadOnlyCollection<Role> roles)
+    public ExportContext(DiscordClient discord,
+        ExportRequest request)
     {
+        Discord = discord;
         Request = request;
-        Members = members;
-        Channels = channels;
-        Roles = roles;
 
-        _assetDownloader = new ExportAssetDownloader(request.OutputAssetsDirPath, request.ShouldReuseAssets);
+        _assetDownloader = new ExportAssetDownloader(
+            request.AssetsDirPath,
+            request.ShouldReuseAssets
+        );
     }
 
-    public string FormatDate(DateTimeOffset date) => Request.DateFormat switch
+    public async ValueTask PopulateChannelsAndRolesAsync(CancellationToken cancellationToken = default)
     {
-        "unix" => date.ToUnixTimeSeconds().ToString(),
-        "unixms" => date.ToUnixTimeMilliseconds().ToString(),
-        var format => date.ToLocalString(format)
+        await foreach (var channel in Discord.GetGuildChannelsAsync(Request.Guild.Id, cancellationToken))
+            _channels[channel.Id] = channel;
+
+        await foreach (var role in Discord.GetGuildRolesAsync(Request.Guild.Id, cancellationToken))
+            _roles[role.Id] = role;
+    }
+
+    // Because members are not pulled in bulk, we need to populate them on demand
+    public async ValueTask PopulateMemberAsync(Snowflake id, CancellationToken cancellationToken = default)
+    {
+        if (_members.ContainsKey(id))
+            return;
+
+        var member = await Discord.TryGetGuildMemberAsync(Request.Guild.Id, id, cancellationToken);
+
+        // Store the result even if it's null, to avoid re-fetching non-existing members
+        _members[id] = member;
+    }
+
+    public string FormatDate(DateTimeOffset instant) => Request.DateFormat switch
+    {
+        "unix" => instant.ToUnixTimeSeconds().ToString(),
+        "unixms" => instant.ToUnixTimeMilliseconds().ToString(),
+        var format => instant.ToLocalString(format)
     };
 
-    public Member? TryGetMember(Snowflake id) => Members.FirstOrDefault(m => m.Id == id);
+    public Member? TryGetMember(Snowflake id) => _members.GetValueOrDefault(id);
 
-    public Channel? TryGetChannel(Snowflake id) => Channels.FirstOrDefault(c => c.Id == id);
+    public Channel? TryGetChannel(Snowflake id) => _channels.GetValueOrDefault(id);
 
-    public Role? TryGetRole(Snowflake id) => Roles.FirstOrDefault(r => r.Id == id);
+    public Role? TryGetRole(Snowflake id) => _roles.GetValueOrDefault(id);
 
     public Color? TryGetUserColor(Snowflake id)
     {
         var member = TryGetMember(id);
-        var roles = member?.RoleIds.Join(Roles, i => i, r => r.Id, (_, role) => role);
 
-        return roles?
+        var memberRoles = member?
+            .RoleIds
+            .Select(TryGetRole)
+            .WhereNotNull()
+            .ToArray();
+
+        return memberRoles?
             .Where(r => r.Color is not null)
             .OrderByDescending(r => r.Position)
             .Select(r => r.Color)
@@ -71,26 +93,24 @@ internal class ExportContext
         try
         {
             var filePath = await _assetDownloader.DownloadAsync(url, cancellationToken);
+            var relativeFilePath = Path.GetRelativePath(Request.OutputDirPath, filePath);
 
-            // We want relative path so that the output files can be copied around without breaking.
-            // Base directory path may be null if the file is stored at the root or relative to working directory.
-            var relativeFilePath = !string.IsNullOrWhiteSpace(Request.OutputBaseDirPath)
-                ? Path.GetRelativePath(Request.OutputBaseDirPath, filePath)
-                : filePath;
+            // Prefer relative paths so that the output files can be copied around without breaking references.
+            // If the assets path is outside of the export directory, use the absolute path instead.
+            var optimalFilePath =
+                relativeFilePath.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal) ||
+                relativeFilePath.StartsWith(".." + Path.AltDirectorySeparatorChar, StringComparison.Ordinal)
+                    ? filePath
+                    : relativeFilePath;
 
-            // HACK: for HTML, we need to format the URL properly
+            // For HTML, the path needs to be properly formatted
             if (Request.Format is ExportFormat.HtmlDark or ExportFormat.HtmlLight)
             {
-                // Need to escape each path segment while keeping the directory separators intact
-                return string.Join(
-                    Path.AltDirectorySeparatorChar,
-                    relativeFilePath
-                        .Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
-                        .Select(Uri.EscapeDataString)
-                );
+                // Create a 'file:///' URI and then strip the 'file:///' prefix to allow for relative paths
+                return new Uri(new Uri("file:///"), optimalFilePath).ToString()[8..];
             }
 
-            return relativeFilePath;
+            return optimalFilePath;
         }
         // Try to catch only exceptions related to failed HTTP requests
         // https://github.com/Tyrrrz/DiscordChatExporter/issues/332

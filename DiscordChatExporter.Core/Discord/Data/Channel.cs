@@ -15,10 +15,11 @@ public partial record Channel(
     string Name,
     int? Position,
     int? CategoryPosition,
+    string? IconUrl,
     string? Topic,
     Snowflake? LastMessageId) : IHasId
 {
-    public bool SupportsVoice => Kind is ChannelKind.GuildVoiceChat or ChannelKind.GuildStageVoice;
+    public bool IsVoice => Kind is ChannelKind.GuildVoiceChat or ChannelKind.GuildStageVoice;
 }
 
 public partial record Channel
@@ -40,7 +41,12 @@ public partial record Channel
     {
         var id = json.GetProperty("id").GetNonWhiteSpaceString().Pipe(Snowflake.Parse);
         var kind = (ChannelKind)json.GetProperty("type").GetInt32();
-        var guildId = json.GetPropertyOrNull("guild_id")?.GetNonWhiteSpaceStringOrNull()?.Pipe(Snowflake.Parse);
+
+        var guildId =
+            json.GetPropertyOrNull("guild_id")?.GetNonWhiteSpaceStringOrNull()?.Pipe(Snowflake.Parse) ??
+            Guild.DirectMessages.Id;
+
+        var category = categoryHint ?? GetFallbackCategory(kind);
 
         var name =
             // Guild channel
@@ -64,6 +70,13 @@ public partial record Channel
             categoryPositionHint ??
             0;
         
+
+        // Icons can only be set for group DM channels
+        var iconUrl = json
+            .GetPropertyOrNull("icon")?
+            .GetNonWhiteSpaceStringOrNull()?
+            .Pipe(h => ImageCdn.GetChannelIconUrl(id, h));
+
         var topic = json.GetPropertyOrNull("topic")?.GetStringOrNull();
 
         var lastMessageId = json
@@ -74,11 +87,12 @@ public partial record Channel
         return new Channel(
             id,
             kind,
-            guildId ?? Guild.DirectMessages.Id,
-            category ?? GetFallbackCategory(kind),
+            guildId,
+            category,
             name,
             position,
             categoryPosition,
+            iconUrl,
             topic,
             lastMessageId
         );

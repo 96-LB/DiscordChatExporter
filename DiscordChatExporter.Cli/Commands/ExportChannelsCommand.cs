@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 using CliFx.Attributes;
 using CliFx.Infrastructure;
@@ -15,7 +14,7 @@ public class ExportChannelsCommand : ExportCommandBase
     [CommandOption(
         "channel",
         'c',
-        Description = "Channel ID(s)."
+        Description = "Channel ID(s). If provided with category IDs, all channels inside those categories will be exported."
     )]
     public required IReadOnlyList<Snowflake> ChannelIds { get; init; }
 

@@ -19,7 +19,7 @@
     mc:Ignorable="d">
     <UserControl.Resources>
         <!--  Sort DMs by last message  -->
-        <CollectionViewSource x:Key="AvailableDirectMessageChannelsViewSource" Source="{Binding AvailableChannels, Mode=OneWay}">
+        <CollectionViewSource x:Key="AvailableDirectChannelsViewSource" Source="{Binding AvailableChannels, Mode=OneWay}">
             <CollectionViewSource.SortDescriptions>
                 <componentModel:SortDescription Direction="Descending" PropertyName="LastMessageId" />
                 <componentModel:SortDescription Direction="Ascending" PropertyName="Name" />
@@ -72,7 +72,7 @@
                         Margin="8"
                         VerticalAlignment="Center"
                         Foreground="{DynamicResource PrimaryHueMidBrush}"
-                        Kind="Password" />
+                        Kind="Key" />
 
                     <!--  Token value  -->
                     <TextBox
@@ -150,7 +150,10 @@
                                 Foreground="{DynamicResource PrimaryHueMidBrush}"
                                 Kind="Account" />
                         </InlineUIContainer>
-                        <Run FontSize="16" FontWeight="SemiBold" Text="To get token for your personal account:" />
+                        <Run
+                            FontSize="16"
+                            FontWeight="SemiBold"
+                            Text="To get token for your personal account:" />
                         <LineBreak />
                         <Run Text="*  Automating user accounts is technically against TOS —" />
                         <Run FontWeight="SemiBold" Text="use at your own risk" /><Run Text="!" />
@@ -175,19 +178,21 @@
                         <Run FontWeight="SemiBold" Text="Ctrl+R" />
                         <Run Text="to reload" />
                         <LineBreak />
-                        <Run Text="6. Search for a request containing" />
+                        <Run Text="6. Switch between random channels to trigger network requests" />
+                        <LineBreak />
+                        <Run Text="7. Search for a request containing" />
                         <Run FontWeight="SemiBold" Text="messages?limit=50" />
                         <Run Text="or similar" />
                         <LineBreak />
-                        <Run Text="7. Select the" />
+                        <Run Text="8. Select the" />
                         <Run FontWeight="SemiBold" Text="Headers" />
                         <Run Text="tab on the right" />
                         <LineBreak />
-                        <Run Text="8. Scroll down to the" />
+                        <Run Text="9. Scroll down to the" />
                         <Run FontWeight="SemiBold" Text="Request Headers" />
                         <Run Text="section" />
                         <LineBreak />
-                        <Run Text="9. Copy the value of the" />
+                        <Run Text="10. Copy the value of the" />
                         <Run FontWeight="SemiBold" Text="authorization" />
                         <Run Text="header" />
                         <LineBreak />
@@ -200,7 +205,10 @@
                                 Foreground="{DynamicResource PrimaryHueMidBrush}"
                                 Kind="Robot" />
                         </InlineUIContainer>
-                        <Run FontSize="16" FontWeight="SemiBold" Text="To get token for a bot account:" />
+                        <Run
+                            FontSize="16"
+                            FontWeight="SemiBold"
+                            Text="To get token for a bot account:" />
                         <LineBreak />
                         <Run Text="1. Open Discord" />
                         <Hyperlink Command="{s:Action OpenDiscordDeveloperPortal}">
@@ -225,7 +233,7 @@
                         <LineBreak />
 
                         <Run Text="If you have questions or issues, please refer to the" />
-                        <Hyperlink Command="{s:Action ShowHelp}">wiki</Hyperlink><Run Text="." />
+                        <Hyperlink Command="{s:Action ShowHelp}">documentation</Hyperlink>
                     </TextBlock>
                 </ScrollViewer>
             </Grid>
@@ -292,7 +300,7 @@
                             <Style BasedOn="{StaticResource {x:Type ListBox}}" TargetType="{x:Type ListBox}">
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsDirectMessageGuildSelected}" Value="True">
-                                        <Setter Property="ItemsSource" Value="{Binding Source={StaticResource AvailableDirectMessageChannelsViewSource}}" />
+                                        <Setter Property="ItemsSource" Value="{Binding Source={StaticResource AvailableDirectChannelsViewSource}}" />
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding IsDirectMessageGuildSelected}" Value="False">
                                         <Setter Property="ItemsSource" Value="{Binding Source={StaticResource AvailableChannelsViewSource}}" />
@@ -337,7 +345,7 @@
                                     </Grid.ColumnDefinitions>
                                     <Grid.ToolTip>
                                         <TextBlock>
-                                            <Run Text="Last message sent on:" />
+                                            <Run Text="Last message:" />
                                             <Run FontWeight="SemiBold" Text="{Binding LastMessageId, Converter={x:Static converters:SnowflakeToDateTimeOffsetConverter.Instance}, ConverterCulture={x:Static globalization:CultureInfo.CurrentCulture}, TargetNullValue=never}" />
                                         </TextBlock>
                                     </Grid.ToolTip>
@@ -350,10 +358,10 @@
                                         <materialDesign:PackIcon.Style>
                                             <Style TargetType="{x:Type materialDesign:PackIcon}">
                                                 <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding SupportsVoice}" Value="True">
+                                                    <DataTrigger Binding="{Binding IsVoice}" Value="True">
                                                         <Setter Property="Kind" Value="VolumeHigh" />
                                                     </DataTrigger>
-                                                    <DataTrigger Binding="{Binding SupportsVoice}" Value="False">
+                                                    <DataTrigger Binding="{Binding IsVoice}" Value="False">
                                                         <Setter Property="Kind" Value="Pound" />
                                                     </DataTrigger>
                                                 </Style.Triggers>

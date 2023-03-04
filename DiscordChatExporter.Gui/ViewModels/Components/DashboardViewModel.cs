@@ -38,16 +38,16 @@ public class DashboardViewModel : PropertyChangedBase
 
     public string? Token { get; set; }
 
-    private IReadOnlyDictionary<Guild, IReadOnlyList<Channel>>? GuildChannelMap { get; set; }
+    private IReadOnlyDictionary<Guild, IReadOnlyList<Channel>>? ChannelsByGuild { get; set; }
 
-    public IReadOnlyList<Guild>? AvailableGuilds => GuildChannelMap?.Keys.ToArray();
+    public IReadOnlyList<Guild>? AvailableGuilds => ChannelsByGuild?.Keys.ToArray();
 
     public Guild? SelectedGuild { get; set; }
 
     public bool IsDirectMessageGuildSelected => SelectedGuild?.Id == Guild.DirectMessages.Id;
 
     public IReadOnlyList<Channel>? AvailableChannels => SelectedGuild is not null
-        ? GuildChannelMap?[SelectedGuild]
+        ? ChannelsByGuild?[SelectedGuild]
         : null;
 
     public IReadOnlyList<Channel>? SelectedChannels { get; set; }
@@ -71,10 +71,8 @@ public class DashboardViewModel : PropertyChangedBase
 
     public void OnViewLoaded()
     {
-        if (_settingsService.LastToken is not null)
-        {
+        if (!string.IsNullOrWhiteSpace(_settingsService.LastToken))
             Token = _settingsService.LastToken;
-        }
     }
 
     public async void ShowSettings()
@@ -83,7 +81,7 @@ public class DashboardViewModel : PropertyChangedBase
         await _dialogManager.ShowDialogAsync(dialog);
     }
 
-    public void ShowHelp() => ProcessEx.StartShellExecute(App.GitHubProjectWikiUrl);
+    public void ShowHelp() => ProcessEx.StartShellExecute(App.DocumentationUrl);
 
     public bool CanPopulateGuildsAndChannels =>
         !IsBusy && !string.IsNullOrWhiteSpace(Token);
@@ -103,17 +101,17 @@ public class DashboardViewModel : PropertyChangedBase
 
             var discord = new DiscordClient(token);
 
-            var guildChannelMap = new Dictionary<Guild, IReadOnlyList<Channel>>();
+            var channelsByGuild = new Dictionary<Guild, IReadOnlyList<Channel>>();
             await foreach (var guild in discord.GetUserGuildsAsync())
             {
-                guildChannelMap[guild] = (await discord.GetGuildChannelsAsync(guild.Id))
+                channelsByGuild[guild] = (await discord.GetGuildChannelsAsync(guild.Id))
                     .Where(c => c.Kind != ChannelKind.GuildCategory)
                     .ToArray();
             }
 
             _discord = discord;
-            GuildChannelMap = guildChannelMap;
-            SelectedGuild = guildChannelMap.Keys.FirstOrDefault();
+            ChannelsByGuild = channelsByGuild;
+            SelectedGuild = channelsByGuild.Keys.FirstOrDefault();
         }
         catch (DiscordChatExporterException ex) when (!ex.IsFatal)
         {
@@ -158,22 +156,27 @@ public class DashboardViewModel : PropertyChangedBase
 
             var exporter = new ChannelExporter(_discord);
 
-            var progresses = Enumerable
-                .Range(0, dialog.Channels!.Count)
-                .Select(_ => _progressMuxer.CreateInput())
+            var channelProgressPairs = dialog
+                .Channels!
+                .Select(c => new
+                {
+                    Channel = c,
+                    Progress = _progressMuxer.CreateInput()
+                })
                 .ToArray();
 
             var successfulExportCount = 0;
 
             await Parallel.ForEachAsync(
-                dialog.Channels.Zip(progresses),
+                channelProgressPairs,
                 new ParallelOptions
                 {
                     MaxDegreeOfParallelism = Math.Max(1, _settingsService.ParallelLimit)
                 },
-                async (tuple, cancellationToken) =>
+                async (pair, cancellationToken) =>
                 {
-                    var (channel, progress) = tuple;
+                    var channel = pair.Channel;
+                    var progress = pair.Progress;
 
                     try
                     {
@@ -181,14 +184,15 @@ public class DashboardViewModel : PropertyChangedBase
                             dialog.Guild!,
                             channel,
                             dialog.OutputPath!,
-                            null,
+                            dialog.AssetsDirPath,
                             dialog.SelectedFormat,
                             dialog.After?.Pipe(Snowflake.FromDate),
                             dialog.Before?.Pipe(Snowflake.FromDate),
                             dialog.PartitionLimit,
                             dialog.MessageFilter,
+                            dialog.ShouldFormatMarkdown,
                             dialog.ShouldDownloadAssets,
-                            _settingsService.ShouldReuseAssets,
+                            dialog.ShouldReuseAssets,
                             _settingsService.DateFormat
                         );
 

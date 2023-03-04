@@ -3,7 +3,6 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using DiscordChatExporter.Core.Discord.Data;
-using DiscordChatExporter.Core.Exporting.Writers;
 
 namespace DiscordChatExporter.Core.Exporting;
 
@@ -14,6 +13,8 @@ internal partial class MessageExporter : IAsyncDisposable
     private int _partitionIndex;
     private MessageWriter? _writer;
 
+    public long MessagesExported { get; private set; }
+
     public MessageExporter(ExportContext context)
     {
         _context = context;
@@ -23,9 +24,16 @@ internal partial class MessageExporter : IAsyncDisposable
     {
         if (_writer is not null)
         {
-            await _writer.WritePostambleAsync(cancellationToken);
-            await _writer.DisposeAsync();
-            _writer = null;
+            try
+            {
+                await _writer.WritePostambleAsync(cancellationToken);
+            }
+            // Writer must be disposed, even if it fails to write the postamble
+            finally
+            {
+                await _writer.DisposeAsync();
+                _writer = null;
+            }
         }
     }
 
@@ -39,15 +47,12 @@ internal partial class MessageExporter : IAsyncDisposable
             _partitionIndex++;
         }
 
-        // Writer is still valid - return
+        // Writer is still valid, return
         if (_writer is not null)
             return _writer;
 
-        var filePath = GetPartitionFilePath(_context.Request.OutputBaseFilePath, _partitionIndex);
-
-        var dirPath = Path.GetDirectoryName(_context.Request.OutputBaseFilePath);
-        if (!string.IsNullOrWhiteSpace(dirPath))
-            Directory.CreateDirectory(dirPath);
+        Directory.CreateDirectory(_context.Request.OutputDirPath);
+        var filePath = GetPartitionFilePath(_context.Request.OutputFilePath, _partitionIndex);
 
         var writer = CreateMessageWriter(filePath, _context.Request.Format, _context);
         await writer.WritePreambleAsync(cancellationToken);
@@ -59,6 +64,7 @@ internal partial class MessageExporter : IAsyncDisposable
     {
         var writer = await GetWriterAsync(cancellationToken);
         await writer.WriteMessageAsync(message, cancellationToken);
+        MessagesExported++;
     }
 
     public async ValueTask DisposeAsync() => await ResetWriterAsync();
@@ -68,7 +74,7 @@ internal partial class MessageExporter
 {
     private static string GetPartitionFilePath(string baseFilePath, int partitionIndex)
     {
-        // First partition - don't change file name
+        // First partition, don't change file name
         if (partitionIndex <= 0)
             return baseFilePath;
 
@@ -86,19 +92,14 @@ internal partial class MessageExporter
     private static MessageWriter CreateMessageWriter(
         string filePath,
         ExportFormat format,
-        ExportContext context)
-    {
-        // Stream will be disposed by the underlying writer
-        var stream = File.Create(filePath);
-
-        return format switch
+        ExportContext context) =>
+        format switch
         {
-            ExportFormat.PlainText => new PlainTextMessageWriter(stream, context),
-            ExportFormat.Csv => new CsvMessageWriter(stream, context),
-            ExportFormat.HtmlDark => new HtmlMessageWriter(stream, context, "Dark"),
-            ExportFormat.HtmlLight => new HtmlMessageWriter(stream, context, "Light"),
-            ExportFormat.Json => new JsonMessageWriter(stream, context),
+            ExportFormat.PlainText => new PlainTextMessageWriter(File.Create(filePath), context),
+            ExportFormat.Csv => new CsvMessageWriter(File.Create(filePath), context),
+            ExportFormat.HtmlDark => new HtmlMessageWriter(File.Create(filePath), context, "Dark"),
+            ExportFormat.HtmlLight => new HtmlMessageWriter(File.Create(filePath), context, "Light"),
+            ExportFormat.Json => new JsonMessageWriter(File.Create(filePath), context),
             _ => throw new ArgumentOutOfRangeException(nameof(format), $"Unknown export format '{format}'.")
         };
-    }
 }

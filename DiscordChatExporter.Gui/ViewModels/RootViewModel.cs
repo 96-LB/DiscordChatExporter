@@ -41,16 +41,25 @@ public class RootViewModel : Screen, IHandle<NotificationMessage>, IDisposable
         DisplayName = $"{App.Name} v{App.VersionString}";
     }
 
-    private async Task ShowWarInUkraineMessageAsync()
+    private async Task ShowUkraineSupportMessageAsync()
     {
-        var dialog = _viewModelFactory.CreateMessageBoxViewModel(
-            "Ukraine is at war!", @"
-My country, Ukraine, has been invaded by Russian military forces in an act of aggression that can only be described as genocide.
-Be on the right side of history! Consider supporting Ukraine in its fight for freedom.
+        if (!_settingsService.IsUkraineSupportMessageEnabled)
+            return;
 
-Press LEARN MORE to find ways that you can help.".Trim(),
-            "LEARN MORE", "CLOSE"
+        var dialog = _viewModelFactory.CreateMessageBoxViewModel(
+            "Thank you for supporting Ukraine!",
+            """
+            As Russia wages a genocidal war against my country, I'm grateful to everyone who continues to stand with Ukraine in our fight for freedom.
+
+            Click LEARN MORE to find ways that you can help.
+            """,
+            "LEARN MORE",
+            "CLOSE"
         );
+
+        // Disable this message in the future
+        _settingsService.IsUkraineSupportMessageEnabled = false;
+        _settingsService.Save();
 
         if (await _dialogManager.ShowDialogAsync(dialog) == true)
         {
@@ -87,7 +96,7 @@ Press LEARN MORE to find ways that you can help.".Trim(),
 
     public async void OnViewFullyLoaded()
     {
-        await ShowWarInUkraineMessageAsync();
+        await ShowUkraineSupportMessageAsync();
         await CheckForUpdatesAsync();
     }
 
@@ -97,6 +106,7 @@ Press LEARN MORE to find ways that you can help.".Trim(),
 
         _settingsService.Load();
 
+        // Sync theme with settings
         if (_settingsService.IsDarkModeEnabled)
         {
             App.SetDarkTheme();
@@ -104,6 +114,18 @@ Press LEARN MORE to find ways that you can help.".Trim(),
         else
         {
             App.SetLightTheme();
+        }
+
+        // App has just been updated, display changelog
+        if (_settingsService.LastAppVersion is not null && _settingsService.LastAppVersion != App.Version)
+        {
+            Notifications.Enqueue(
+                $"Successfully updated to {App.Name} v{App.VersionString}",
+                "CHANGELOG", () => ProcessEx.StartShellExecute(App.ChangelogUrl)
+            );
+
+            _settingsService.LastAppVersion = App.Version;
+            _settingsService.Save();
         }
     }
 

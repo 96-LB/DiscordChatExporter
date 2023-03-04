@@ -23,7 +23,7 @@ public static class Http
     private static bool IsRetryableException(Exception exception) =>
         exception.GetSelfAndChildren().Any(ex =>
             ex is TimeoutException or SocketException or AuthenticationException ||
-            ex is HttpRequestException hrex && IsRetryableStatusCode(hrex.TryGetStatusCode() ?? HttpStatusCode.OK)
+            ex is HttpRequestException hrex && IsRetryableStatusCode(hrex.StatusCode ?? HttpStatusCode.OK)
         );
 
     public static IAsyncPolicy ResiliencePolicy { get; } =
@@ -39,8 +39,9 @@ public static class Http
                 8,
                 (i, result, _) =>
                 {
-                    // If rate-limited, use retry-after header as the guide
-                    if (result.Result.Headers.RetryAfter?.Delta is { } retryAfter)
+                    // If rate-limited, use retry-after header as the guide.
+                    // The response can be null here if an exception was thrown.
+                    if (result.Result?.Headers.RetryAfter?.Delta is { } retryAfter)
                     {
                         // Add some buffer just in case
                         return retryAfter + TimeSpan.FromSeconds(1);

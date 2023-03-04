@@ -59,7 +59,13 @@ public class ExportSetupViewModel : DialogScreen
         ? MessageFilter.Parse(MessageFilterValue)
         : MessageFilter.Null;
 
+    public bool ShouldFormatMarkdown { get; set; }
+
     public bool ShouldDownloadAssets { get; set; }
+
+    public bool ShouldReuseAssets { get; set; }
+
+    public string? AssetsDirPath { get; set; }
 
     public bool IsAdvancedSectionDisplayed { get; set; }
 
@@ -72,29 +78,27 @@ public class ExportSetupViewModel : DialogScreen
         SelectedFormat = _settingsService.LastExportFormat;
         PartitionLimitValue = _settingsService.LastPartitionLimitValue;
         MessageFilterValue = _settingsService.LastMessageFilterValue;
+        ShouldFormatMarkdown = _settingsService.LastShouldFormatMarkdown;
         ShouldDownloadAssets = _settingsService.LastShouldDownloadAssets;
+        ShouldReuseAssets = _settingsService.LastShouldReuseAssets;
+        AssetsDirPath = _settingsService.LastAssetsDirPath;
 
         // Show the "advanced options" section by default if any
         // of the advanced options are set to non-default values.
         IsAdvancedSectionDisplayed =
-            After != default ||
-            Before != default ||
+            After is not null ||
+            Before is not null ||
             !string.IsNullOrWhiteSpace(PartitionLimitValue) ||
             !string.IsNullOrWhiteSpace(MessageFilterValue) ||
-            ShouldDownloadAssets != default;
+            ShouldDownloadAssets ||
+            ShouldReuseAssets ||
+            !string.IsNullOrWhiteSpace(AssetsDirPath);
     }
 
     public void ToggleAdvancedSection() => IsAdvancedSectionDisplayed = !IsAdvancedSectionDisplayed;
 
-    public void Confirm()
+    public void ShowOutputPathPrompt()
     {
-        // Persist preferences
-        _settingsService.LastExportFormat = SelectedFormat;
-        _settingsService.LastPartitionLimitValue = PartitionLimitValue;
-        _settingsService.LastMessageFilterValue = MessageFilterValue;
-        _settingsService.LastShouldDownloadAssets = ShouldDownloadAssets;
-
-        // If single channel - prompt file path
         if (IsSingleChannel)
         {
             var defaultFileName = ExportRequest.GetDefaultOutputFileName(
@@ -105,20 +109,48 @@ public class ExportSetupViewModel : DialogScreen
                 Before?.Pipe(Snowflake.FromDate)
             );
 
-            // Filter
-            var ext = SelectedFormat.GetFileExtension();
-            var filter = $"{ext.ToUpperInvariant()} files|*.{ext}";
+            var extension = SelectedFormat.GetFileExtension();
+            var filter = $"{extension.ToUpperInvariant()} files|*.{extension}";
 
-            OutputPath = _dialogManager.PromptSaveFilePath(filter, defaultFileName);
+            var path = _dialogManager.PromptSaveFilePath(filter, defaultFileName);
+            if (!string.IsNullOrWhiteSpace(path))
+                OutputPath = path;
         }
-        // If multiple channels - prompt dir path
         else
         {
-            OutputPath = _dialogManager.PromptDirectoryPath();
+            var path = _dialogManager.PromptDirectoryPath();
+            if (!string.IsNullOrWhiteSpace(path))
+                OutputPath = path;
+        }
+    }
+
+    public void ShowAssetsDirPathPrompt()
+    {
+        var path = _dialogManager.PromptDirectoryPath();
+        if (!string.IsNullOrWhiteSpace(path))
+            AssetsDirPath = path;
+    }
+
+    public void Confirm()
+    {
+        // Prompt the output path if it's not set yet
+        if (string.IsNullOrWhiteSpace(OutputPath))
+        {
+            ShowOutputPathPrompt();
+
+            // If the output path is still not set, cancel the export
+            if (string.IsNullOrWhiteSpace(OutputPath))
+                return;
         }
 
-        if (string.IsNullOrWhiteSpace(OutputPath))
-            return;
+        // Persist preferences
+        _settingsService.LastExportFormat = SelectedFormat;
+        _settingsService.LastPartitionLimitValue = PartitionLimitValue;
+        _settingsService.LastMessageFilterValue = MessageFilterValue;
+        _settingsService.LastShouldFormatMarkdown = ShouldFormatMarkdown;
+        _settingsService.LastShouldDownloadAssets = ShouldDownloadAssets;
+        _settingsService.LastShouldReuseAssets = ShouldReuseAssets;
+        _settingsService.LastAssetsDirPath = AssetsDirPath;
 
         Close(true);
     }
@@ -126,8 +158,10 @@ public class ExportSetupViewModel : DialogScreen
 
 public static class ExportSetupViewModelExtensions
 {
-    public static ExportSetupViewModel CreateExportSetupViewModel(this IViewModelFactory factory,
-        Guild guild, IReadOnlyList<Channel> channels)
+    public static ExportSetupViewModel CreateExportSetupViewModel(
+        this IViewModelFactory factory,
+        Guild guild,
+        IReadOnlyList<Channel> channels)
     {
         var viewModel = factory.CreateExportSetupViewModel();
 

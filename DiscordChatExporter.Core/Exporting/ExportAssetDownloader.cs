@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using AsyncKeyedLock;
 using DiscordChatExporter.Core.Utils;
 using DiscordChatExporter.Core.Utils.Extensions;
 
@@ -14,6 +15,12 @@ namespace DiscordChatExporter.Core.Exporting;
 
 internal partial class ExportAssetDownloader
 {
+    private static readonly AsyncKeyedLocker<string> Locker = new(o =>
+    {
+        o.PoolSize = 20;
+        o.PoolInitialFill = 1;
+    });
+
     private readonly string _workingDirPath;
     private readonly bool _reuse;
 
@@ -28,15 +35,18 @@ internal partial class ExportAssetDownloader
 
     public async ValueTask<string> DownloadAsync(string url, CancellationToken cancellationToken = default)
     {
-        if (_pathCache.TryGetValue(url, out var cachedFilePath))
-            return cachedFilePath;
-
         var fileName = GetFileNameFromUrl(url);
         var filePath = Path.Combine(_workingDirPath, fileName);
 
-        // Reuse existing files if we're allowed to
-        if (!_reuse || !File.Exists(filePath))
+        using (await Locker.LockAsync(filePath, cancellationToken))
         {
+            if (_pathCache.TryGetValue(url, out var cachedFilePath))
+                return cachedFilePath;
+
+            // Reuse existing files if we're allowed to
+            if (_reuse && File.Exists(filePath))
+                return _pathCache[url] = filePath;
+
             Directory.CreateDirectory(_workingDirPath);
 
             await Http.ResiliencePolicy.ExecuteAsync(async () =>
@@ -50,9 +60,9 @@ internal partial class ExportAssetDownloader
                 try
                 {
                     var lastModified = response.Content.Headers.TryGetValue("Last-Modified")?.Pipe(s =>
-                        DateTimeOffset.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)
-                            ? date
-                            : (DateTimeOffset?) null
+                        DateTimeOffset.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.None, out var instant)
+                            ? instant
+                            : (DateTimeOffset?)null
                     );
 
                     if (lastModified is not null)
@@ -70,21 +80,19 @@ internal partial class ExportAssetDownloader
                     // ignore exceptions thrown here.
                 }
             });
-        }
 
-        return _pathCache[url] = filePath;
+            return _pathCache[url] = filePath;
+        }
     }
 }
 
 internal partial class ExportAssetDownloader
 {
-    private static string GetUrlHash(string url)
-    {
-        using var hash = SHA256.Create();
-
-        var data = hash.ComputeHash(Encoding.UTF8.GetBytes(url));
-        return data.ToHex().Truncate(5); // 5 chars ought to be enough for anybody
-    }
+    private static string GetUrlHash(string url) => SHA256
+        .HashData(Encoding.UTF8.GetBytes(url))
+        .ToHex()
+        // 5 chars ought to be enough for anybody
+        .Truncate(5);
 
     private static string GetFileNameFromUrl(string url)
     {

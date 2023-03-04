@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
-using System.Text.RegularExpressions;
 
 namespace DiscordChatExporter.Core.Discord;
 
@@ -19,8 +18,8 @@ public partial record struct Snowflake
 {
     public static Snowflake Zero { get; } = new(0);
 
-    public static Snowflake FromDate(DateTimeOffset date) => new(
-        ((ulong)date.ToUnixTimeMilliseconds() - 1420070400000UL) << 22
+    public static Snowflake FromDate(DateTimeOffset instant) => new(
+        ((ulong)instant.ToUnixTimeMilliseconds() - 1420070400000UL) << 22
     );
 
     public static Snowflake? TryParse(string? str, IFormatProvider? formatProvider = null)
@@ -29,15 +28,15 @@ public partial record struct Snowflake
             return null;
 
         // As number
-        if (Regex.IsMatch(str, @"^\d+$") && ulong.TryParse(str, NumberStyles.Number, formatProvider, out var value))
+        if (ulong.TryParse(str, NumberStyles.None, formatProvider, out var value))
         {
             return new Snowflake(value);
         }
 
         // As date
-        if (DateTimeOffset.TryParse(str, formatProvider, DateTimeStyles.None, out var date))
+        if (DateTimeOffset.TryParse(str, formatProvider, DateTimeStyles.None, out var instant))
         {
-            return FromDate(date);
+            return FromDate(instant);
         }
 
         return null;

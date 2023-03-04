@@ -1,22 +1,26 @@
-﻿using DiscordChatExporter.Core.Exporting;
+﻿using System;
+using System.IO;
+using Cogwheel;
+using DiscordChatExporter.Core.Exporting;
 using Microsoft.Win32;
-using Tyrrrz.Settings;
 
 namespace DiscordChatExporter.Gui.Services;
 
-public partial class SettingsService : SettingsManager
+public partial class SettingsService : SettingsBase
 {
+    public bool IsUkraineSupportMessageEnabled { get; set; } = true;
+
     public bool IsAutoUpdateEnabled { get; set; } = true;
 
     public bool IsDarkModeEnabled { get; set; } = IsDarkModeEnabledByDefault();
 
     public bool IsTokenPersisted { get; set; } = true;
 
-    public string DateFormat { get; set; } = "dd-MMM-yy hh:mm tt";
+    public string DateFormat { get; set; } = "MM/dd/yyyy h:mm tt";
 
     public int ParallelLimit { get; set; } = 1;
 
-    public bool ShouldReuseAssets { get; set; }
+    public Version? LastAppVersion { get; set; }
 
     public string? LastToken { get; set; }
 
@@ -26,16 +30,27 @@ public partial class SettingsService : SettingsManager
 
     public string? LastMessageFilterValue { get; set; }
 
+    public bool LastShouldFormatMarkdown { get; set; } = true;
+
     public bool LastShouldDownloadAssets { get; set; }
 
+    public bool LastShouldReuseAssets { get; set; }
+
+    public string? LastAssetsDirPath { get; set; }
+
     public SettingsService()
+        : base(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Settings.dat"))
     {
-        Configuration.StorageSpace = StorageSpace.Instance;
-        Configuration.SubDirectoryPath = "";
-        Configuration.FileName = "Settings.dat";
     }
 
-    public bool ShouldSerializeLastToken() => IsTokenPersisted;
+    public override void Save()
+    {
+        // Clear token if it's not supposed to be persisted
+        if (!IsTokenPersisted)
+            LastToken = null;
+
+        base.Save();
+    }
 }
 
 public partial class SettingsService
