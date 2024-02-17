@@ -12,173 +12,232 @@ using DiscordChatExporter.Core.Utils.Extensions;
 
 namespace DiscordChatExporter.Core.Exporting;
 
-internal partial class HtmlMarkdownVisitor : MarkdownVisitor
+internal partial class HtmlMarkdownVisitor(
+    ExportContext context,
+    StringBuilder buffer,
+    bool isJumbo
+) : MarkdownVisitor
 {
-    private readonly ExportContext _context;
-    private readonly StringBuilder _buffer;
-    private readonly bool _isJumbo;
-
-    public HtmlMarkdownVisitor(ExportContext context, StringBuilder buffer, bool isJumbo)
-    {
-        _context = context;
-        _buffer = buffer;
-        _isJumbo = isJumbo;
-    }
-
-    protected override async ValueTask<MarkdownNode> VisitTextAsync(
+    protected override ValueTask VisitTextAsync(
         TextNode text,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
-        _buffer.Append(HtmlEncode(text.Text));
-        return await base.VisitTextAsync(text, cancellationToken);
+        buffer.Append(HtmlEncode(text.Text));
+        return default;
     }
 
-    protected override async ValueTask<MarkdownNode> VisitFormattingAsync(
+    protected override async ValueTask VisitFormattingAsync(
         FormattingNode formatting,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         var (openingTag, closingTag) = formatting.Kind switch
         {
-            FormattingKind.Bold => (
-                // language=HTML
-                "<strong>",
-                // language=HTML
-                "</strong>"
-            ),
+            FormattingKind.Bold
+                => (
+                    // lang=html
+                    "<strong>",
+                    // lang=html
+                    "</strong>"
+                ),
 
-            FormattingKind.Italic => (
-                // language=HTML
-                "<em>",
-                // language=HTML
-                "</em>"
-            ),
+            FormattingKind.Italic
+                => (
+                    // lang=html
+                    "<em>",
+                    // lang=html
+                    "</em>"
+                ),
 
-            FormattingKind.Underline => (
-                // language=HTML
-                "<u>",
-                // language=HTML
-                "</u>"
-            ),
+            FormattingKind.Underline
+                => (
+                    // lang=html
+                    "<u>",
+                    // lang=html
+                    "</u>"
+                ),
 
-            FormattingKind.Strikethrough => (
-                // language=HTML
-                "<s>",
-                // language=HTML
-                "</s>"
-            ),
+            FormattingKind.Strikethrough
+                => (
+                    // lang=html
+                    "<s>",
+                    // lang=html
+                    "</s>"
+                ),
 
-            FormattingKind.Spoiler => (
-                // language=HTML
-                """<span class="chatlog__markdown-spoiler chatlog__markdown-spoiler--hidden" onclick="showSpoiler(event, this)">""",
-                // language=HTML
-                """</span>"""
-            ),
+            FormattingKind.Spoiler
+                => (
+                    // lang=html
+                    """<span class="chatlog__markdown-spoiler chatlog__markdown-spoiler--hidden" onclick="showSpoiler(event, this)">""",
+                    // lang=html
+                    """</span>"""
+                ),
 
-            FormattingKind.Quote => (
-                // language=HTML
-                """<div class="chatlog__markdown-quote"><div class="chatlog__markdown-quote-border"></div><div class="chatlog__markdown-quote-content">""",
-                // language=HTML
-                """</div></div>"""
-            ),
+            FormattingKind.Quote
+                => (
+                    // lang=html
+                    """<div class="chatlog__markdown-quote"><div class="chatlog__markdown-quote-border"></div><div class="chatlog__markdown-quote-content">""",
+                    // lang=html
+                    """</div></div>"""
+                ),
 
-            _ => throw new InvalidOperationException($"Unknown formatting kind '{formatting.Kind}'.")
+            _
+                => throw new InvalidOperationException(
+                    $"Unknown formatting kind '{formatting.Kind}'."
+                )
         };
 
-        _buffer.Append(openingTag);
-        var result = await base.VisitFormattingAsync(formatting, cancellationToken);
-        _buffer.Append(closingTag);
-
-        return result;
+        buffer.Append(openingTag);
+        await VisitAsync(formatting.Children, cancellationToken);
+        buffer.Append(closingTag);
     }
 
-    protected override async ValueTask<MarkdownNode> VisitInlineCodeBlockAsync(
-        InlineCodeBlockNode inlineCodeBlock,
-        CancellationToken cancellationToken = default)
+    protected override async ValueTask VisitHeadingAsync(
+        HeadingNode heading,
+        CancellationToken cancellationToken = default
+    )
     {
-        _buffer.Append(
-            // language=HTML
+        buffer.Append(
+            // lang=html
+            $"<h{heading.Level}>"
+        );
+
+        await VisitAsync(heading.Children, cancellationToken);
+
+        buffer.Append(
+            // lang=html
+            $"</h{heading.Level}>"
+        );
+    }
+
+    protected override async ValueTask VisitListAsync(
+        ListNode list,
+        CancellationToken cancellationToken = default
+    )
+    {
+        buffer.Append(
+            // lang=html
+            "<ul>"
+        );
+
+        await VisitAsync(list.Items, cancellationToken);
+
+        buffer.Append(
+            // lang=html
+            "</ul>"
+        );
+    }
+
+    protected override async ValueTask VisitListItemAsync(
+        ListItemNode listItem,
+        CancellationToken cancellationToken = default
+    )
+    {
+        buffer.Append(
+            // lang=html
+            "<li>"
+        );
+
+        await VisitAsync(listItem.Children, cancellationToken);
+
+        buffer.Append(
+            // lang=html
+            "</li>"
+        );
+    }
+
+    protected override ValueTask VisitInlineCodeBlockAsync(
+        InlineCodeBlockNode inlineCodeBlock,
+        CancellationToken cancellationToken = default
+    )
+    {
+        buffer.Append(
+            // lang=html
             $"""
             <code class="chatlog__markdown-pre chatlog__markdown-pre--inline">{HtmlEncode(inlineCodeBlock.Code)}</code>
             """
         );
 
-        return await base.VisitInlineCodeBlockAsync(inlineCodeBlock, cancellationToken);
+        return default;
     }
 
-    protected override async ValueTask<MarkdownNode> VisitMultiLineCodeBlockAsync(
+    protected override ValueTask VisitMultiLineCodeBlockAsync(
         MultiLineCodeBlockNode multiLineCodeBlock,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         var highlightClass = !string.IsNullOrWhiteSpace(multiLineCodeBlock.Language)
             ? $"language-{multiLineCodeBlock.Language}"
             : "nohighlight";
 
-        _buffer.Append(
-            // language=HTML
+        buffer.Append(
+            // lang=html
             $"""
             <code class="chatlog__markdown-pre chatlog__markdown-pre--multiline {highlightClass}">{HtmlEncode(multiLineCodeBlock.Code)}</code>
             """
         );
 
-        return await base.VisitMultiLineCodeBlockAsync(multiLineCodeBlock, cancellationToken);
+        return default;
     }
 
-    protected override async ValueTask<MarkdownNode> VisitLinkAsync(
+    protected override async ValueTask VisitLinkAsync(
         LinkNode link,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         // Try to extract the message ID if the link points to a Discord message
-        var linkedMessageId = Regex.Match(
-            link.Url,
-            @"^https?://(?:discord|discordapp)\.com/channels/.*?/(\d+)/?$"
-        ).Groups[1].Value;
+        var linkedMessageId = Regex
+            .Match(link.Url, @"^https?://(?:discord|discordapp)\.com/channels/.*?/(\d+)/?$")
+            .Groups[1]
+            .Value;
 
-        _buffer.Append(
+        buffer.Append(
             !string.IsNullOrWhiteSpace(linkedMessageId)
-                // language=HTML
+                // lang=html
                 ? $"""<a href="{HtmlEncode(link.Url)}" onclick="scrollToMessage(event, '{linkedMessageId}')">"""
-                // language=HTML
+                // lang=html
                 : $"""<a href="{HtmlEncode(link.Url)}">"""
         );
 
-        var result = await base.VisitLinkAsync(link, cancellationToken);
+        await VisitAsync(link.Children, cancellationToken);
 
-        // language=HTML
-        _buffer.Append("</a>");
-
-        return result;
+        buffer.Append(
+            // lang=html
+            "</a>"
+        );
     }
 
-    protected override async ValueTask<MarkdownNode> VisitEmojiAsync(
+    protected override async ValueTask VisitEmojiAsync(
         EmojiNode emoji,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         var emojiImageUrl = Emoji.GetImageUrl(emoji.Id, emoji.Name, emoji.IsAnimated);
-        var jumboClass = _isJumbo ? "chatlog__emoji--large" : "";
+        var jumboClass = isJumbo ? "chatlog__emoji--large" : "";
 
-        _buffer.Append(
-            // language=HTML
+        buffer.Append(
+            // lang=html
             $"""
             <img
                 loading="lazy"
                 class="chatlog__emoji {jumboClass}"
                 alt="{emoji.Name}"
                 title="{emoji.Code}"
-                src="{await _context.ResolveAssetUrlAsync(emojiImageUrl, cancellationToken)}">
+                src="{await context.ResolveAssetUrlAsync(emojiImageUrl, cancellationToken)}">
             """
         );
-
-        return await base.VisitEmojiAsync(emoji, cancellationToken);
     }
 
-    protected override async ValueTask<MarkdownNode> VisitMentionAsync(
+    protected override async ValueTask VisitMentionAsync(
         MentionNode mention,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         if (mention.Kind == MentionKind.Everyone)
         {
-            _buffer.Append(
-                // language=HTML
+            buffer.Append(
+                // lang=html
                 """
                 <span class="chatlog__markdown-mention">@everyone</span>
                 """
@@ -186,8 +245,8 @@ internal partial class HtmlMarkdownVisitor : MarkdownVisitor
         }
         else if (mention.Kind == MentionKind.Here)
         {
-            _buffer.Append(
-                // language=HTML
+            buffer.Append(
+                // lang=html
                 """
                 <span class="chatlog__markdown-mention">@here</span>
                 """
@@ -199,27 +258,27 @@ internal partial class HtmlMarkdownVisitor : MarkdownVisitor
             // which means they need to be populated on demand.
             // https://github.com/Tyrrrz/DiscordChatExporter/issues/304
             if (mention.TargetId is not null)
-                await _context.PopulateMemberAsync(mention.TargetId.Value, cancellationToken);
+                await context.PopulateMemberAsync(mention.TargetId.Value, cancellationToken);
 
-            var member = mention.TargetId?.Pipe(_context.TryGetMember);
+            var member = mention.TargetId?.Pipe(context.TryGetMember);
             var fullName = member?.User.FullName ?? "Unknown";
-            var nick = member?.Nick ?? member?.User.Name ?? "Unknown";
+            var displayName = member?.DisplayName ?? member?.User.DisplayName ?? "Unknown";
 
-            _buffer.Append(
-                // language=HTML
+            buffer.Append(
+                // lang=html
                 $"""
-                <span class="chatlog__markdown-mention" title="{HtmlEncode(fullName)}">@{HtmlEncode(nick)}</span>
+                <span class="chatlog__markdown-mention" title="{HtmlEncode(fullName)}">@{HtmlEncode(displayName)}</span>
                 """
             );
         }
         else if (mention.Kind == MentionKind.Channel)
         {
-            var channel = mention.TargetId?.Pipe(_context.TryGetChannel);
+            var channel = mention.TargetId?.Pipe(context.TryGetChannel);
             var symbol = channel?.IsVoice == true ? "🔊" : "#";
             var name = channel?.Name ?? "deleted-channel";
 
-            _buffer.Append(
-                // language=HTML
+            buffer.Append(
+                // lang=html
                 $"""
                 <span class="chatlog__markdown-mention">{symbol}{HtmlEncode(name)}</span>
                 """
@@ -227,7 +286,7 @@ internal partial class HtmlMarkdownVisitor : MarkdownVisitor
         }
         else if (mention.Kind == MentionKind.Role)
         {
-            var role = mention.TargetId?.Pipe(_context.TryGetRole);
+            var role = mention.TargetId?.Pipe(context.TryGetRole);
             var name = role?.Name ?? "deleted-role";
             var color = role?.Color;
 
@@ -235,39 +294,38 @@ internal partial class HtmlMarkdownVisitor : MarkdownVisitor
                 ? $"""
                   color: rgb({color.Value.R}, {color.Value.G}, {color.Value.B}); background-color: rgba({color.Value.R}, {color.Value.G}, {color.Value.B}, 0.1);
                   """
-                : "";
+                : null;
 
-            _buffer.Append(
-                // language=HTML
+            buffer.Append(
+                // lang=html
                 $"""
                 <span class="chatlog__markdown-mention" style="{style}">@{HtmlEncode(name)}</span>
                 """
             );
         }
-
-        return await base.VisitMentionAsync(mention, cancellationToken);
     }
 
-    protected override async ValueTask<MarkdownNode> VisitTimestampAsync(
+    protected override ValueTask VisitTimestampAsync(
         TimestampNode timestamp,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         var formatted = timestamp.Instant is not null
-            ? !string.IsNullOrWhiteSpace(timestamp.Format)
-                ? timestamp.Instant.Value.ToLocalString(timestamp.Format)
-                : _context.FormatDate(timestamp.Instant.Value)
+            ? context.FormatDate(timestamp.Instant.Value, timestamp.Format ?? "g")
             : "Invalid date";
 
-        var formattedLong = timestamp.Instant?.ToLocalString("dddd, MMMM d, yyyy h:mm tt") ?? "";
+        var formattedLong = timestamp.Instant is not null
+            ? context.FormatDate(timestamp.Instant.Value, "f")
+            : "";
 
-        _buffer.Append(
-            // language=HTML
+        buffer.Append(
+            // lang=html
             $"""
             <span class="chatlog__markdown-timestamp" title="{HtmlEncode(formattedLong)}">{HtmlEncode(formatted)}</span>
             """
         );
 
-        return await base.VisitTimestampAsync(timestamp, cancellationToken);
+        return default;
     }
 }
 
@@ -279,16 +337,24 @@ internal partial class HtmlMarkdownVisitor
         ExportContext context,
         string markdown,
         bool isJumboAllowed = true,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         var nodes = MarkdownParser.Parse(markdown);
 
         var isJumbo =
-            isJumboAllowed &&
-            nodes.All(n => n is EmojiNode || n is TextNode textNode && string.IsNullOrWhiteSpace(textNode.Text));
+            isJumboAllowed
+            && nodes.All(
+                n =>
+                    n is EmojiNode
+                    || n is TextNode textNode && string.IsNullOrWhiteSpace(textNode.Text)
+            );
 
         var buffer = new StringBuilder();
-        await new HtmlMarkdownVisitor(context, buffer, isJumbo).VisitAsync(nodes, cancellationToken);
+        await new HtmlMarkdownVisitor(context, buffer, isJumbo).VisitAsync(
+            nodes,
+            cancellationToken
+        );
 
         return buffer.ToString();
     }

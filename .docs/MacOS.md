@@ -4,7 +4,7 @@
 
 ## Installing .NET Runtime
 
-Please follow the [instructions provided here](https://github.com/Tyrrrz/DiscordChatExporter/blob/master/.docs/Dotnet.md).
+Please follow the [instructions provided here](Dotnet.md).
 
 ## Downloading and using DiscordChatExporter.Cli
 
@@ -13,10 +13,10 @@ Please follow the [instructions provided here](https://github.com/Tyrrrz/Discord
 3. In the Terminal window, type `cd` , press the SPACE key, then drag and drop the extracted folder into the window, then press the RETURN key.
 4. Execute the following command to export, replacing `TOKEN` and `CHANNEL` with your own values:
 
-```
+```console
 dotnet DiscordChatExporter.Cli.dll export -t TOKEN -c CHANNEL
 ```
 
-> [How to get Token and Channel IDs](https://github.com/Tyrrrz/DiscordChatExporter/blob/master/.docs/Token-and-IDs.md).
+> [How to get Token and Channel IDs](Token-and-IDs.md).
 
-There's much more you can do with DCE.CLI! Read the [CLI explained](https://github.com/Tyrrrz/DiscordChatExporter/blob/master/.docs/Getting-started.md#dcecli-commands-) page to get started.
+There's much more you can do with DCE.CLI! Read the [CLI explained](Using-the-CLI.md) page to get started.

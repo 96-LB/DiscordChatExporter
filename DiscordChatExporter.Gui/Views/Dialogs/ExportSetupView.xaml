@@ -60,8 +60,10 @@
                 FontWeight="Light"
                 TextTrimming="CharacterEllipsis"
                 Visibility="{Binding IsSingleChannel, Converter={x:Static s:BoolToVisibilityConverter.Instance}}">
-                <Run Text="{Binding Channels[0].Category.Name, Mode=OneWay}" ToolTip="{Binding Channels[0].Category.Name, Mode=OneWay}" />
-                <Run Text="/" />
+                <TextBlock Visibility="{Binding Channels[0].Parent, Converter={x:Static s:BoolToVisibilityConverter.Instance}}">
+                    <Run Text="{Binding Channels[0].Parent.Name, Mode=OneWay}" ToolTip="{Binding Channels[0].Parent.Name, Mode=OneWay}" />
+                    <Run Text="/" />
+                </TextBlock>
                 <Run
                     FontWeight="SemiBold"
                     Text="{Binding Channels[0].Name, Mode=OneWay}"
@@ -87,17 +89,18 @@
                             <TextBox.ToolTip>
                                 <TextBlock>
                                     <Run Text="Output file or directory path." />
-                                    <Run Text="If a directory is specified, file names will be generated automatically based on the channel names and other parameters." />
-                                    <Run Text="Directory path should end with a slash to avoid ambiguity." />
+                                    <Run Text="If a directory is specified, file names will be generated automatically based on the channel names and export parameters." />
+                                    <Run Text="Directory paths must end with a slash to avoid ambiguity." />
+                                    <Run Text="Supports template tokens, see the documentation for more info." />
                                     <LineBreak />
                                     <LineBreak />
                                     <Run Text="Available template tokens:" />
                                     <LineBreak />
                                     <Run FontWeight="SemiBold" Text="%g" />
-                                    <Run Text="— guild ID" />
+                                    <Run Text="— server ID" />
                                     <LineBreak />
                                     <Run FontWeight="SemiBold" Text="%G" />
-                                    <Run Text="— guild name" />
+                                    <Run Text="— server name" />
                                     <LineBreak />
                                     <Run FontWeight="SemiBold" Text="%t" />
                                     <Run Text="— category ID" />
@@ -221,7 +224,7 @@
                             materialDesign:HintAssist.IsFloating="True"
                             Style="{DynamicResource MaterialDesignOutlinedTextBox}"
                             Text="{Binding PartitionLimitValue}"
-                            ToolTip="Split output into partitions, each limited to this number of messages (e.g. '100') or file size (e.g. '10mb')" />
+                            ToolTip="Split the output into partitions, each limited to the specified number of messages (e.g. '100') or file size (e.g. '10mb')" />
 
                         <!--  Filtering  -->
                         <TextBox
@@ -230,7 +233,7 @@
                             materialDesign:HintAssist.IsFloating="True"
                             Style="{DynamicResource MaterialDesignOutlinedTextBox}"
                             Text="{Binding MessageFilterValue}"
-                            ToolTip="Only include messages that satisfy this filter (e.g. 'from:foo#1234' or 'has:image')" />
+                            ToolTip="Only include messages that satisfy this filter (e.g. 'from:foo#1234' or 'has:image'). See the documentation for more info." />
 
                         <!--  Markdown formatting  -->
                         <Grid Margin="16,8" ToolTip="Process markdown, mentions, and other special tokens">
@@ -269,7 +272,10 @@
                         </Grid>
 
                         <!--  Reuse assets  -->
-                        <Grid Margin="16,8" ToolTip="Reuse previously downloaded assets to avoid redundant requests">
+                        <Grid
+                            Margin="16,8"
+                            IsEnabled="{Binding ShouldDownloadAssets}"
+                            ToolTip="Reuse previously downloaded assets to avoid redundant requests">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
@@ -287,14 +293,16 @@
                         </Grid>
 
                         <!--  Assets path  -->
-                        <Grid Margin="16,8">
+                        <Grid
+                            Margin="16,8"
+                            IsEnabled="{Binding ShouldDownloadAssets}"
+                            ToolTip="Download assets to this directory. If not specified, the asset directory path will be derived from the output path.">
                             <TextBox
                                 Padding="16,16,42,16"
                                 materialDesign:HintAssist.Hint="Assets directory path"
                                 materialDesign:HintAssist.IsFloating="True"
                                 Style="{DynamicResource MaterialDesignOutlinedTextBox}"
-                                Text="{Binding AssetsDirPath}"
-                                ToolTip="Download assets to this directory. If not specified, the asset directory path will be derived from the output path." />
+                                Text="{Binding AssetsDirPath}" />
                             <Button
                                 Width="24"
                                 Height="24"

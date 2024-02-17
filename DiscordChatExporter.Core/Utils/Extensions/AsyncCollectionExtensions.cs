@@ -4,10 +4,11 @@ using System.Threading.Tasks;
 
 namespace DiscordChatExporter.Core.Utils.Extensions;
 
-public static class AsyncExtensions
+public static class AsyncCollectionExtensions
 {
-    private static async ValueTask<IReadOnlyList<T>> AggregateAsync<T>(
-        this IAsyncEnumerable<T> asyncEnumerable)
+    private static async ValueTask<IReadOnlyList<T>> CollectAsync<T>(
+        this IAsyncEnumerable<T> asyncEnumerable
+    )
     {
         var list = new List<T>();
 
@@ -18,6 +19,6 @@ public static class AsyncExtensions
     }
 
     public static ValueTaskAwaiter<IReadOnlyList<T>> GetAwaiter<T>(
-        this IAsyncEnumerable<T> asyncEnumerable) =>
-        asyncEnumerable.AggregateAsync().GetAwaiter();
+        this IAsyncEnumerable<T> asyncEnumerable
+    ) => asyncEnumerable.CollectAsync().GetAwaiter();
 }

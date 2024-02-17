@@ -2,7 +2,7 @@
 
 Scheduling on macOS is a bit tricky, but it should work if you follow the instructions accordingly.
 
-Make sure you already have **DiscordChatExporter.CLI** and **.NET Core** properly installed ([instructions here](https://github.com/Tyrrrz/DiscordChatExporter/blob/master/.docs/macOS-usage-instructions.md)).
+Make sure you already have **DiscordChatExporter.CLI** and **.NET Core** properly installed ([instructions here](MacOS.md)).
 
 ## Creating the script
 
@@ -70,8 +70,8 @@ exit 0
 
 4. Replace:
 
-- `tokenhere` with your [Token](https://github.com/Tyrrrz/DiscordChatExporter/blob/master/.docs/Token-and-IDs.md)
-- `channelhere` with a [Channel ID](https://github.com/Tyrrrz/DiscordChatExporter/blob/master/.docs/Token-and-IDs.md)
+- `tokenhere` with your [Token](Token-and-IDs.md)
+- `channelhere` with a [Channel ID](Token-and-IDs.md)
 - `dceFOLDERpathhere` with DCE's **directory's path** (e.g. `/Users/user/Desktop/DiscordChatExporterFolder`, NOT `/Users/user/Desktop/DiscordChatExporterFolder/DiscordChatExporter.DLL`)
 - `filenamehere` with the exported channel's filename, without spaces
 - `dirhere` with the directory you want the files to be saved at (e.g. `/Users/user/Documents/Discord\ Exports`)
@@ -88,7 +88,7 @@ After copying and pasting, make sure the file/folder name is not missing. If a f
 - `/Users/user/Documents/Discord\ Exports` - Correct ✓
 - `/Users/user/Desktop/DiscordChatExporter` - Correct ✓
 
-![](https://i.imgur.com/29u6Nyx.png)
+![Screenshot of mac info window](https://i.imgur.com/29u6Nyx.png)
 
 5. Save the file as `filename.sh`, not `.txt`
 6. Open Terminal.app, type `chmod +x`, press the SPACE key, then drag & drop the `filename.sh` into the Terminal window and hit RETURN. You may be prompted for your password, and you won't be able to see it as you type.
@@ -101,13 +101,13 @@ Open TextEdit, make a Plain Text (⇧⌘T) and then paste the following into it:
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
-    <dict>
-        <key>Label</key>
-        <string>local.discordchatexporter</string>
-        <key>Program</key>
-        <string>/path/to/filename.sh</string>
-        REPLACEME
-    </dict>
+  <dict>
+    <key>Label</key>
+    <string>local.discordchatexporter</string>
+    <key>Program</key>
+    <string>/path/to/filename.sh</string>
+    REPLACEME
+  </dict>
 </plist>
 ```
 
@@ -138,16 +138,16 @@ The following example is to export every 3600 seconds (1 hour), replace the inte
 ```xml
 <key>StartCalendarInterval</key>
 <dict>
-    <key>Weekday</key>
-    <integer>0</integer>
-    <key>Month</key>
-    <integer>0</integer>
-    <key>Day</key>
-    <integer>0</integer>
-    <key>Hour</key>
-    <integer>0</integer>
-    <key>Minute</key>
-    <integer>0</integer>
+  <key>Weekday</key>
+  <integer>0</integer>
+  <key>Month</key>
+  <integer>0</integer>
+  <key>Day</key>
+  <integer>0</integer>
+  <key>Hour</key>
+  <integer>0</integer>
+  <key>Minute</key>
+  <integer>0</integer>
 </dict>
 ```
 
@@ -168,17 +168,17 @@ Omitted keys are interpreted as wildcards, for example, if you delete the Minute
 
 Be aware that if you set the day to '31', the script will only run on months that have the 31st day.
 
-**Check the examples below ([or skip to step 3 (loading the file)](https://github.com/Tyrrrz/DiscordChatExporter/blob/master/.docs/scheduling-MacOS.md#3-loading-the-plist-into-launchctl)):**
+**Check the examples below ([or skip to step 3 (loading the file)](#3-loading-the-plist-into-launchctl)):**
 
 Export everyday at 5:15 PM:
 
 ```xml
 <key>StartCalendarInterval</key>
 <dict>
-    <key>Hour</key>
-    <integer>17</integer>
-    <key>Minute</key>
-    <integer>15</integer>
+  <key>Hour</key>
+  <integer>17</integer>
+  <key>Minute</key>
+  <integer>15</integer>
 </dict>
 
 ```
@@ -188,8 +188,8 @@ Every 15 minutes of an hour (xx:15):
 ```xml
 <key>StartCalendarInterval</key>
 <dict>
-    <key>Minute</key>
-    <integer>15</integer>
+  <key>Minute</key>
+  <integer>15</integer>
 </dict>
 
 ```
@@ -199,20 +199,20 @@ Every Sunday at midnight and every Wednesday full hour (xx:00). Notice the inclu
 ```xml
 <key>StartCalendarInterval</key>
 <array>
-        <dict>
-		<key>Weekday</key>
-		<integer>0</integer>
-                <key>Hour</key>
-                <integer>00</integer>
-                <key>Minute</key>
-                <integer>00</integer>
-        </dict>
-	<dict>
-		<key>Weekday</key>
-		<integer>3</integer>
-		<key>Minute</key>
-		<integer>00</integer>
-	</dict>
+  <dict>
+    <key>Weekday</key>
+    <integer>0</integer>
+    <key>Hour</key>
+    <integer>00</integer>
+    <key>Minute</key>
+    <integer>00</integer>
+  </dict>
+  <dict>
+    <key>Weekday</key>
+    <integer>3</integer>
+    <key>Minute</key>
+    <integer>00</integer>
+  </dict>
 </array>
 ```
 

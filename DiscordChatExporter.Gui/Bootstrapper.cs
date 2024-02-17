@@ -3,7 +3,6 @@ using DiscordChatExporter.Gui.ViewModels;
 using DiscordChatExporter.Gui.ViewModels.Framework;
 using Stylet;
 using StyletIoC;
-
 #if !DEBUG
 using System.Windows;
 using System.Windows.Threading;
@@ -17,8 +16,8 @@ public class Bootstrapper : Bootstrapper<RootViewModel>
     {
         base.OnStart();
 
-        // Set default theme
-        // (preferred theme will be set later, once the settings are loaded)
+        // Set the default theme.
+        // Preferred theme will be set later, once the settings are loaded.
         App.SetLightTheme();
     }
 
@@ -26,20 +25,17 @@ public class Bootstrapper : Bootstrapper<RootViewModel>
     {
         base.ConfigureIoC(builder);
 
-        // Bind settings as singleton
         builder.Bind<SettingsService>().ToSelf().InSingletonScope();
-
-        // Bind view model factory
         builder.Bind<IViewModelFactory>().ToAbstractFactory();
     }
 
 #if !DEBUG
-    protected override void OnUnhandledException(DispatcherUnhandledExceptionEventArgs e)
+    protected override void OnUnhandledException(DispatcherUnhandledExceptionEventArgs args)
     {
-        base.OnUnhandledException(e);
+        base.OnUnhandledException(args);
 
         MessageBox.Show(
-            e.Exception.ToString(),
+            args.Exception.ToString(),
             "Error occured",
             MessageBoxButton.OK,
             MessageBoxImage.Error

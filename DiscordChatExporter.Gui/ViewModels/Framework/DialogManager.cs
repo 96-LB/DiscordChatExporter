@@ -4,28 +4,21 @@ using System.Threading;
 using System.Threading.Tasks;
 using MaterialDesignThemes.Wpf;
 using Microsoft.Win32;
-using Ookii.Dialogs.Wpf;
 using Stylet;
 
 namespace DiscordChatExporter.Gui.ViewModels.Framework;
 
-public class DialogManager : IDisposable
+public class DialogManager(IViewManager viewManager) : IDisposable
 {
-    private readonly IViewManager _viewManager;
     private readonly SemaphoreSlim _dialogLock = new(1, 1);
-
-    public DialogManager(IViewManager viewManager)
-    {
-        _viewManager = viewManager;
-    }
 
     public async ValueTask<T?> ShowDialogAsync<T>(DialogScreen<T> dialogScreen)
     {
-        var view = _viewManager.CreateAndBindViewForModelIfNecessary(dialogScreen);
+        var view = viewManager.CreateAndBindViewForModelIfNecessary(dialogScreen);
 
         void OnDialogOpened(object? openSender, DialogOpenedEventArgs openArgs)
         {
-            void OnScreenClosed(object? closeSender, EventArgs args)
+            void OnScreenClosed(object? closeSender, EventArgs closeArgs)
             {
                 try
                 {
@@ -68,12 +61,8 @@ public class DialogManager : IDisposable
 
     public string? PromptDirectoryPath(string defaultDirPath = "")
     {
-        var dialog = new VistaFolderBrowserDialog
-        {
-            SelectedPath = defaultDirPath
-        };
-
-        return dialog.ShowDialog() == true ? dialog.SelectedPath : null;
+        var dialog = new OpenFolderDialog { InitialDirectory = defaultDirPath };
+        return dialog.ShowDialog() == true ? dialog.FolderName : null;
     }
 
     public void Dispose()
