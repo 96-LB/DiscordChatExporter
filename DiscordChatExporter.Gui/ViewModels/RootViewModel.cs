@@ -4,8 +4,8 @@ using DiscordChatExporter.Gui.Services;
 using DiscordChatExporter.Gui.Utils;
 using DiscordChatExporter.Gui.ViewModels.Components;
 using DiscordChatExporter.Gui.ViewModels.Dialogs;
-using DiscordChatExporter.Gui.ViewModels.Messages;
 using DiscordChatExporter.Gui.ViewModels.Framework;
+using DiscordChatExporter.Gui.ViewModels.Messages;
 using MaterialDesignThemes.Wpf;
 using Stylet;
 
@@ -27,7 +27,8 @@ public class RootViewModel : Screen, IHandle<NotificationMessage>, IDisposable
         IEventAggregator eventAggregator,
         DialogManager dialogManager,
         SettingsService settingsService,
-        UpdateService updateService)
+        UpdateService updateService
+    )
     {
         _viewModelFactory = viewModelFactory;
         _dialogManager = dialogManager;
@@ -62,9 +63,7 @@ public class RootViewModel : Screen, IHandle<NotificationMessage>, IDisposable
         _settingsService.Save();
 
         if (await _dialogManager.ShowDialogAsync(dialog) == true)
-        {
             ProcessEx.StartShellExecute("https://tyrrrz.me/ukraine?source=discordchatexporter");
-        }
     }
 
     private async ValueTask CheckForUpdatesAsync()
@@ -80,7 +79,8 @@ public class RootViewModel : Screen, IHandle<NotificationMessage>, IDisposable
 
             Notifications.Enqueue(
                 "Update has been downloaded and will be installed when you exit",
-                "INSTALL NOW", () =>
+                "INSTALL NOW",
+                () =>
                 {
                     _updateService.FinalizeUpdate(true);
                     RequestClose();
@@ -106,7 +106,7 @@ public class RootViewModel : Screen, IHandle<NotificationMessage>, IDisposable
 
         _settingsService.Load();
 
-        // Sync theme with settings
+        // Sync the theme with settings
         if (_settingsService.IsDarkModeEnabled)
         {
             App.SetDarkTheme();
@@ -116,12 +116,16 @@ public class RootViewModel : Screen, IHandle<NotificationMessage>, IDisposable
             App.SetLightTheme();
         }
 
-        // App has just been updated, display changelog
-        if (_settingsService.LastAppVersion is not null && _settingsService.LastAppVersion != App.Version)
+        // App has just been updated, display the changelog
+        if (
+            _settingsService.LastAppVersion is not null
+            && _settingsService.LastAppVersion != App.Version
+        )
         {
             Notifications.Enqueue(
                 $"Successfully updated to {App.Name} v{App.VersionString}",
-                "CHANGELOG", () => ProcessEx.StartShellExecute(App.ChangelogUrl)
+                "WHAT'S NEW",
+                () => ProcessEx.StartShellExecute(App.LatestReleaseUrl)
             );
 
             _settingsService.LastAppVersion = App.Version;
@@ -137,8 +141,7 @@ public class RootViewModel : Screen, IHandle<NotificationMessage>, IDisposable
         _updateService.FinalizeUpdate(false);
     }
 
-    public void Handle(NotificationMessage message) =>
-        Notifications.Enqueue(message.Text);
+    public void Handle(NotificationMessage message) => Notifications.Enqueue(message.Text);
 
     public void Dispose() => Notifications.Dispose();
 }

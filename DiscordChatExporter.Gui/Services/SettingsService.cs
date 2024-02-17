@@ -2,11 +2,13 @@
 using System.IO;
 using Cogwheel;
 using DiscordChatExporter.Core.Exporting;
+using DiscordChatExporter.Gui.Models;
 using Microsoft.Win32;
 
 namespace DiscordChatExporter.Gui.Services;
 
-public partial class SettingsService : SettingsBase
+public partial class SettingsService()
+    : SettingsBase(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Settings.dat"))
 {
     public bool IsUkraineSupportMessageEnabled { get; set; } = true;
 
@@ -16,7 +18,11 @@ public partial class SettingsService : SettingsBase
 
     public bool IsTokenPersisted { get; set; } = true;
 
-    public string DateFormat { get; set; } = "MM/dd/yyyy h:mm tt";
+    public ThreadInclusionMode ThreadInclusionMode { get; set; } = ThreadInclusionMode.None;
+
+    public string? Locale { get; set; }
+
+    public bool IsUtcNormalizationEnabled { get; set; }
 
     public int ParallelLimit { get; set; } = 1;
 
@@ -38,18 +44,16 @@ public partial class SettingsService : SettingsBase
 
     public string? LastAssetsDirPath { get; set; }
 
-    public SettingsService()
-        : base(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Settings.dat"))
-    {
-    }
-
     public override void Save()
     {
-        // Clear token if it's not supposed to be persisted
+        // Clear the token if it's not supposed to be persisted
+        var lastToken = LastToken;
         if (!IsTokenPersisted)
             LastToken = null;
 
         base.Save();
+
+        LastToken = lastToken;
     }
 }
 
@@ -59,10 +63,13 @@ public partial class SettingsService
     {
         try
         {
-            return Registry.CurrentUser.OpenSubKey(
-                "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
-                false
-            )?.GetValue("AppsUseLightTheme") is 0;
+            return Registry
+                .CurrentUser.OpenSubKey(
+                    "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+                    false
+                )
+                ?.GetValue("AppsUseLightTheme")
+                is 0;
         }
         catch
         {

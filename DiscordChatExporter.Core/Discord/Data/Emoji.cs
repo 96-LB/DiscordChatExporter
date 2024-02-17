@@ -14,12 +14,11 @@ public partial record Emoji(
     // Name of a custom emoji (e.g. LUL) or actual representation of a standard emoji (e.g. 🙂)
     string Name,
     bool IsAnimated,
-    string ImageUrl)
+    string ImageUrl
+)
 {
     // Name of a custom emoji (e.g. LUL) or name of a standard emoji (e.g. slight_smile)
-    public string Code => Id is not null
-        ? Name
-        : EmojiIndex.TryGetCode(Name) ?? Name;
+    public string Code => Id is not null ? Name : EmojiIndex.TryGetCode(Name) ?? Name;
 }
 
 public partial record Emoji
@@ -34,25 +33,22 @@ public partial record Emoji
         if (!string.IsNullOrWhiteSpace(name))
             return ImageCdn.GetStandardEmojiUrl(name);
 
-        // Either ID or name should be set
-        throw new ApplicationException("Emoji has neither ID nor name set.");
+        throw new InvalidOperationException("Either the emoji ID or name should be provided.");
     }
 
     public static Emoji Parse(JsonElement json)
     {
-        var id = json.GetPropertyOrNull("id")?.GetNonWhiteSpaceStringOrNull()?.Pipe(Snowflake.Parse);
+        var id = json.GetPropertyOrNull("id")
+            ?.GetNonWhiteSpaceStringOrNull()
+            ?.Pipe(Snowflake.Parse);
 
         // Names may be missing on custom emoji within reactions
-        var name = json.GetPropertyOrNull("name")?.GetNonWhiteSpaceStringOrNull() ?? "Unknown Emoji";
+        var name =
+            json.GetPropertyOrNull("name")?.GetNonWhiteSpaceStringOrNull() ?? "Unknown Emoji";
 
         var isAnimated = json.GetPropertyOrNull("animated")?.GetBooleanOrNull() ?? false;
         var imageUrl = GetImageUrl(id, name, isAnimated);
 
-        return new Emoji(
-            id,
-            name,
-            isAnimated,
-            imageUrl
-        );
+        return new Emoji(id, name, isAnimated, imageUrl);
     }
 }
