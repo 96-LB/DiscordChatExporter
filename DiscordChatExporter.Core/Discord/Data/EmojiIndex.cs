@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 
-namespace DiscordChatExporter.Core.Utils;
+namespace DiscordChatExporter.Core.Discord.Data;
 
 // Data sourced from: https://github.com/Tyrrrz/DiscordChatExporter/issues/599#issuecomment-863431045
 [ExcludeFromCodeCoverage]

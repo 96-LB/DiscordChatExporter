@@ -1,5 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <PropertyGroup>
+    <Configurations>Debug;Release</Configurations>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="AsyncKeyedLock" Version="6.2.4" />
     <PackageReference Include="CSharpier.MsBuild" Version="0.26.7" PrivateAssets="all" />

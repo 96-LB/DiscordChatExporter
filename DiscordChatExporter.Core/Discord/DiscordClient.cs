@@ -268,19 +268,21 @@ public class DiscordClient(string token)
             // so that the user may refer to them more easily in file name templates.
             var position = 0;
             var categoryPositions = new Dictionary<string, int>();
-            
-            foreach (var channelJson in responseOrdered)
+
+            foreach (var channelJson in channelsJson)
             {
-                var parentId = channelJson.GetPropertyOrNull("parent_id")?.GetNonWhiteSpaceStringOrNull();
+                var parentId = channelJson
+                    .GetPropertyOrNull("parent_id")
+                    ?.GetNonWhiteSpaceStringOrNull();
 
                 var category = !string.IsNullOrWhiteSpace(parentId)
-                    ? categories.GetValueOrDefault(parentId)
+                    ? parentsById.GetValueOrDefault(Snowflake.Parse(parentId))
                     : null;
-                
+
                 var categoryPosition = !string.IsNullOrWhiteSpace(parentId)
                     ? categoryPositions.GetValueOrDefault(parentId)
                     : 0;
-                        
+
                 var channel = Channel.Parse(channelJson, category, position, categoryPosition);
                 yield return channel;
                 categoryPositions[parentId ?? ""] = categoryPosition + 1;

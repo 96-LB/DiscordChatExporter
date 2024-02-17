@@ -1,5 +1,5 @@
 ﻿using DiscordChatExporter.Core.Discord;
-using DiscordChatExporter.Core.Utils;
+using DiscordChatExporter.Core.Discord.Data;
 
 namespace DiscordChatExporter.Core.Markdown;
 

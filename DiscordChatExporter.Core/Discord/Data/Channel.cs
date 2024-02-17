@@ -60,7 +60,12 @@ public partial record Channel(
 
 public partial record Channel
 {
-    public static Channel Parse(JsonElement json, ChannelCategory? categoryHint = null, int? positionHint = null, int? categoryPositionHint = null)
+    public static Channel Parse(
+        JsonElement json,
+        Channel? parent = null,
+        int? positionHint = null,
+        int? categoryPositionHint = null
+    )
     {
         var id = json.GetProperty("id").GetNonWhiteSpaceString().Pipe(Snowflake.Parse);
         var kind = json.GetProperty("type").GetInt32().Pipe(t => (ChannelKind)t);
@@ -84,7 +89,7 @@ public partial record Channel
 
         var position = positionHint ?? json.GetPropertyOrNull("position")?.GetInt32OrNull();
         var categoryPosition = categoryPositionHint ?? 0;
-        
+
         // Icons can only be set for group DM channels
         var iconUrl = json.GetPropertyOrNull("icon")
             ?.GetNonWhiteSpaceStringOrNull()
