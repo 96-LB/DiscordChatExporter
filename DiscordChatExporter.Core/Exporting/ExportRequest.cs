@@ -165,8 +165,8 @@ public partial class ExportRequest
                         "%g" => guild.Id.ToString(),
                         "%G" => guild.Name,
 
-                        "%t" => channel.Parent?.Id.ToString() ?? "",
-                        "%T" => channel.Parent?.Name ?? "",
+                        "%t" => channel.Parent?.Id.ToString() ?? "0",
+                        "%T" => channel.Parent?.Name ?? "Default",
 
                         "%c" => channel.Id.ToString(),
                         "%C" => channel.Name,
